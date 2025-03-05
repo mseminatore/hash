@@ -14,10 +14,18 @@
 #define HT_FREE free
 #endif
 
+#ifndef HT_DEFAULT_SIZE
+#define HT_DEFAULT_SIZE 8
+#endif
+
+#ifndef HT_LOAD_FACTOR
+#define HT_LOAD_FACTOR 0.67f
+#endif
+
 //--------------------------------------
 //
 //--------------------------------------
-typedef uint32_t hash_value_t;
+typedef intptr_t hash_value_t;
 typedef void* key_value_t;
 typedef void* value_value_t;
 
@@ -48,9 +56,10 @@ typedef struct HashTable
 //--------------------------------------
 HashTable *ht_init();
 int ht_free(HashTable *ht);
-value_value_t ht_find(HashTable *ht, key_value_t key);
-int ht_insert(HashTable *ht, key_value_t key, value_value_t value);
+value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key);
+int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
+HashTable *ht_grow(HashTable *ht);
 
 #endif // __HASH_H
