@@ -83,7 +83,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     }
 
     // if not equal, start linear search for match
-    size_t bin = (start_bin + 1) % (ht->size - 1);
+    size_t bin = (start_bin + 1) & (ht->size - 1);
 
     while (bin != start_bin)
     {
@@ -94,7 +94,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
             return hte->value;
         }
 
-        bin = (bin + 1) % (ht->size - 1);
+        bin = (bin + 1) & (ht->size - 1);
     }
 
     // if not found, fail
@@ -107,7 +107,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t hash, key_value_t key, value_value_t value, size_t size)
 {
     // check for free entry based on hash
-    size_t start_bin = hash % (size - 1);
+    size_t start_bin = hash & (size - 1);
 
     HashTable_Entry* hte = &table[start_bin];
 
@@ -121,7 +121,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
     }
 
     // otherwise start linear search for open bin
-    size_t bin = (start_bin + 1) % (size - 1);
+    size_t bin = (start_bin + 1) & (size - 1);
 
     while (bin != start_bin)
     {
@@ -139,7 +139,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
             return HT_OK;
         }
 
-        bin = (bin + 1) % (size - 1);
+        bin = (bin + 1) & (size - 1);
     }
 
     // if no free slot found, then fail
