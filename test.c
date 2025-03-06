@@ -43,6 +43,12 @@ void test_insert()
     SUITE("Insert");
     TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
 }
 
 //--------------------------------------
@@ -52,6 +58,7 @@ void test_find()
 {
     SUITE("Find");
 
+    TEST(ht_find(ht, (hash_value_t)akey, akey));
 }
 
 //--------------------------------------

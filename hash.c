@@ -5,6 +5,11 @@
 
 #include "hash.h"
 
+#define HT_AUTO_GROW 1
+
+#define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
+#define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
+
 //--------------------------------------
 // initialize hash table
 //--------------------------------------
@@ -69,10 +74,76 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     assert(ht && ht->table);
 
     // look at entry based on hash
+    size_t start_bin = hash % (ht->size - 1);
+    HashTable_Entry* hte = &ht->table[start_bin];
+
+    if (HASH_MATCH(hte, hash, key))
+    {
+        return hte->value;
+    }
+
     // if not equal, start linear search for match
+    size_t bin = (start_bin + 1) % (ht->size - 1);
+
+    while (bin != start_bin)
+    {
+        hte = &ht->table[bin];
+
+        if (HASH_MATCH(hte, hash, key))
+        {
+            return hte->value;
+        }
+
+        bin = (bin + 1) % (ht->size - 1);
+    }
+
     // if not found, fail
-    // otherwise return found value
     return NULL;
+}
+
+//--------------------------------------
+//
+//--------------------------------------
+static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t hash, key_value_t key, value_value_t value, size_t size)
+{
+    // check for free entry based on hash
+    size_t start_bin = hash % (size - 1);
+
+    HashTable_Entry* hte = &table[start_bin];
+
+    // if entry unused, fill it and return success
+    if (HASH_EMPTY(hte))
+    {
+        hte->hash = hash;
+        hte->key = key;
+        hte->value = value;
+        return HT_OK;
+    }
+
+    // otherwise start linear search for open bin
+    size_t bin = (start_bin + 1) % (size - 1);
+
+    while (bin != start_bin)
+    {
+        // mark collisions
+        ht->collisions++;
+        ht->recent_collisions++;
+
+        hte = &table[bin];
+
+        if (HASH_EMPTY(hte))
+        {
+            hte->hash = hash;
+            hte->key = key;
+            hte->value = value;
+            return HT_OK;
+        }
+
+        bin = (bin + 1) % (size - 1);
+    }
+
+    // if no free slot found, then fail
+    return HT_FAIL;
 }
 
 //--------------------------------------
@@ -83,6 +154,7 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
     assert(ht && ht->table);
 
     // check for load factor and grow table if necessary
+#if HT_AUTO_GROW
     float load_factor = (float)ht_size(ht) / ht_capacity(ht);
     if (load_factor > HT_LOAD_FACTOR)
     {
@@ -91,25 +163,13 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
             return HT_FAIL;
         }
     }
+#endif
 
-    // check for free entry based on hash
-    size_t bin = hash % (ht->size - 1);
+    int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size);
+    if (result == HT_OK)
+        ht->entries++;
 
-    // if entry unused, fill it and return success
-    if (ht->table[bin].hash == 0 && ht->table[bin].key == 0 && ht->table[bin].value == 0)
-    {
-        ht->table[bin].hash = hash;
-        ht->table[bin].key = key;
-        ht->table[bin].value = value;
-        return HT_OK;
-    }
-
-    // otherwise mark collisions and start linear search for open bin
-    ht->collisions++;
-    ht->recent_collisions++;
-    
-    // if no free slot found, then fail
-    return HT_FAIL;
+    return result;
 }
 
 //--------------------------------------
@@ -140,8 +200,42 @@ HashTable *ht_grow(HashTable *ht)
     assert(ht && ht->table);
 
     // increase (double) table size
-    // alloc new table
-    // re-insert existing items
+    size_t new_size = ht->size << 1;
 
-    return NULL;
+    // alloc new table
+    size_t new_table_size = sizeof(HashTable_Entry) * new_size;
+    HashTable_Entry* new_table = HT_ALLOC(new_table_size);
+    if (!new_table)
+    {
+        return NULL;
+    }
+
+    memset(new_table, 0, new_table_size);
+
+    // re-insert existing items into new table
+    HashTable_Entry* hte;
+    for (size_t i = 0; i < ht->size; i++)
+    {
+        hte = &ht->table[i];
+        if (!HASH_EMPTY(hte))
+        {
+            if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size))
+            {
+                HT_FREE(new_table);
+                return NULL;
+            }
+        }
+    }
+
+    // free old table
+    HT_FREE(ht->table);
+
+    // update hash table state
+    ht->table = new_table;
+    ht->size = new_size;
+
+    // clear recent collisions
+    ht->recent_collisions = 0;
+
+    return ht;
 }
