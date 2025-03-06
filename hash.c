@@ -79,7 +79,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     assert(ht && ht->table);
 
     // look at entry based on hash
-    size_t start_bin = hash % (ht->size - 1);
+    size_t start_bin = hash & (ht->size - 1);
     HashTable_Entry* hte = &ht->table[start_bin];
 
     if (HASH_MATCH(hte, hash, key))
