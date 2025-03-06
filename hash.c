@@ -10,6 +10,11 @@
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
 
+// maintain a free list of already alloc'd tables
+#define HT_MAX_FREE 16
+static HashTable ht_free_list[HT_MAX_FREE];
+static int ht_free_count = 0;
+
 //--------------------------------------
 // initialize hash table
 //--------------------------------------
@@ -238,4 +243,14 @@ HashTable *ht_grow(HashTable *ht)
     ht->recent_collisions = 0;
 
     return ht;
+}
+
+//--------------------------------------
+//
+//--------------------------------------
+void ht_stats(HashTable* ht)
+{
+    assert(ht && ht->table);
+
+    printf("entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
 }

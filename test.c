@@ -49,6 +49,7 @@ void test_insert()
     TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    ht_stats(ht);
 }
 
 //--------------------------------------

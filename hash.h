@@ -61,5 +61,6 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
+void ht_stats(HashTable* ht);
 
 #endif // __HASH_H
