@@ -4,6 +4,7 @@
 
 HashTable *ht = NULL;
 
+char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy", "dog"};
 char *akey = "foo";
 char *avalue = "bar";
 
@@ -41,14 +42,20 @@ void test_size()
 void test_insert()
 {
     SUITE("Insert");
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+
+    for (int i = 0; i < 9; i++)
+    {
+        TEST(HT_OK == ht_insert(ht, (hash_value_t)keys[i], keys[i], avalue));
+    }
+
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     ht_stats(ht);
 }
 
@@ -59,7 +66,7 @@ void test_find()
 {
     SUITE("Find");
 
-    TEST(ht_find(ht, (hash_value_t)akey, akey));
+    TEST(ht_find(ht, (hash_value_t)keys[8], keys[8]));
 }
 
 //--------------------------------------
