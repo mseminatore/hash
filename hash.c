@@ -6,6 +6,7 @@
 #include "hash.h"
 
 #define HT_AUTO_GROW 1
+#define HT_DEBUG_STATS 1
 
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
@@ -14,6 +15,16 @@
 #define HT_MAX_FREE 16
 static HashTable ht_free_list[HT_MAX_FREE];
 static int ht_free_count = 0;
+
+#if HT_DEBUG_STATS == 1
+static size_t allocs = 0;
+static size_t frees = 0;
+#define HT_ALLOC_INC allocs++
+#define HT_FREE_INC frees++
+#else
+#define HT_ALLOC_INC
+#define HT_FREE_INC
+#endif
 
 //--------------------------------------
 // initialize hash table
@@ -25,6 +36,7 @@ HashTable *ht_init()
     {
         return NULL;
     }
+    HT_ALLOC_INC;
 
     ht->collisions = 0;
     ht->entries = 0;
@@ -37,8 +49,10 @@ HashTable *ht_init()
     {
         // release table entry and fail
         HT_FREE(ht);
+        HT_FREE_INC;
         return NULL;
     }
+    HT_ALLOC_INC;
 
     memset(ht->table, 0, table_size);
     return ht;
@@ -59,6 +73,7 @@ int ht_free(HashTable *ht)
     // TODO - warn if table is not empty?
 
     HT_FREE(ht->table);
+    HT_FREE_INC;
 
     // clear struct contents
     ht->collisions = 0;
@@ -68,6 +83,7 @@ int ht_free(HashTable *ht)
     ht->table = 0;
 
     HT_FREE(ht);
+    HT_FREE_INC;
     return HT_OK;
 }
 
@@ -107,7 +123,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
 }
 
 //--------------------------------------
-//
+// internal insert
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t hash, key_value_t key, value_value_t value, size_t size)
 {
@@ -183,7 +199,6 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
 size_t ht_size(HashTable *ht)
 {
     assert(ht && ht->table);
-
     return (ht && ht->table) ? ht->entries : 0;
 }
 
@@ -193,7 +208,6 @@ size_t ht_size(HashTable *ht)
 size_t ht_capacity(HashTable *ht)
 {
     assert(ht && ht->table);
-
     return (ht && ht->table) ? ht->size : 0;
 }
 
@@ -215,6 +229,7 @@ HashTable *ht_grow(HashTable *ht)
         return NULL;
     }
 
+    HT_ALLOC_INC;
     memset(new_table, 0, new_table_size);
 
     // re-insert existing items into new table
@@ -227,6 +242,7 @@ HashTable *ht_grow(HashTable *ht)
             if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size))
             {
                 HT_FREE(new_table);
+                HT_FREE_INC;
                 return NULL;
             }
         }
@@ -234,6 +250,7 @@ HashTable *ht_grow(HashTable *ht)
 
     // free old table
     HT_FREE(ht->table);
+    HT_FREE_INC;
 
     // update hash table state
     ht->table = new_table;
@@ -246,11 +263,15 @@ HashTable *ht_grow(HashTable *ht)
 }
 
 //--------------------------------------
-//
+// print some useful debug stats
 //--------------------------------------
 void ht_stats(HashTable* ht)
 {
     assert(ht && ht->table);
 
-    printf("entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
+#if HT_DEBUG_STATS == 1
+    printf("All tables -> allocs: %zu, frees: %zu\n", allocs, frees);
+#endif
+
+printf("This table -> entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
 }

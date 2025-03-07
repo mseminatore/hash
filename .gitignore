@@ -1,6 +1,8 @@
 # Cmake dirs
 build/
 
+.DS_Store
+
 # Prerequisites
 *.d
 
