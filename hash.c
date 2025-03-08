@@ -316,6 +316,10 @@ HashTable* ht_shrink(HashTable* ht)
 	// decrease (half) table size
 	size_t new_size = ht->size >> 1;
 
+    // make sure smaller size is large enough
+    if (3 * ht->entries / 2 > new_size)
+        return NULL;
+
     return ht_resize(ht, new_size);
 }
 

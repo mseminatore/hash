@@ -57,6 +57,11 @@ void test_insert()
     //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
     ht_stats(ht);
+
+    TEST(NULL == ht_shrink(ht));
+    TEST(ht_grow(ht) != NULL);
+    TEST(NULL != ht_shrink(ht));
+    ht_stats(ht);
 }
 
 //--------------------------------------
@@ -66,7 +71,10 @@ void test_find()
 {
     SUITE("Find");
 
-    TEST(ht_find(ht, (hash_value_t)keys[8], keys[8]));
+    for (int i = 0; i < 9; i++)
+    {
+        TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
+    }
 }
 
 //--------------------------------------
