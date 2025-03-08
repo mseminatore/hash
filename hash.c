@@ -13,7 +13,7 @@
 
 // maintain a free list of already alloc'd tables
 #define HT_MAX_FREE 16
-static HashTable ht_free_list[HT_MAX_FREE];
+static HashTable *ht_free_list[HT_MAX_FREE];
 static int ht_free_count = 0;
 
 #if HT_DEBUG_STATS == 1
@@ -29,21 +29,35 @@ static size_t frees = 0;
 //--------------------------------------
 // initialize hash table
 //--------------------------------------
-HashTable *ht_init()
+HashTable *ht_create()
 {
-    HashTable *ht = HT_ALLOC(sizeof(HashTable));
+    HashTable* ht;
+    
+    if (ht_free_count > 0)
+	{
+		ht = ht_free_list[--ht_free_count];
+	}
+	else
+	{
+		ht = HT_ALLOC(sizeof(HashTable));
+        HT_ALLOC_INC;
+    }
+    
     if (!ht)
     {
         return NULL;
     }
-    HT_ALLOC_INC;
 
     ht->collisions = 0;
     ht->entries = 0;
     ht->recent_collisions = 0;
     ht->size = HT_DEFAULT_SIZE;
-    
+
     size_t table_size = sizeof(HashTable_Entry) * ht->size;
+
+#if 1
+    ht->table = ht->small_table; 
+#else
     ht->table = HT_ALLOC(table_size);
     if (!ht->table)
     {
@@ -53,7 +67,9 @@ HashTable *ht_init()
         return NULL;
     }
     HT_ALLOC_INC;
+#endif
 
+    // zero table mem
     memset(ht->table, 0, table_size);
     return ht;
 }
@@ -72,18 +88,33 @@ int ht_free(HashTable *ht)
 
     // TODO - warn if table is not empty?
 
-    HT_FREE(ht->table);
-    HT_FREE_INC;
+    // set table to default table
+    // free table
+    if (ht->table != ht->small_table)
+	{
+		HT_FREE(ht->table);
+		HT_FREE_INC;
+        ht->table = ht->small_table;
+	}
 
     // clear struct contents
     ht->collisions = 0;
     ht->entries = 0;
     ht->recent_collisions = 0;
     ht->size = 0;
-    ht->table = 0;
+//    ht->table = 0;
 
-    HT_FREE(ht);
-    HT_FREE_INC;
+    // add to free list
+    if (ht_free_count < HT_MAX_FREE)
+	{
+		ht_free_list[ht_free_count++] = ht;
+	}
+    else
+    {
+        HT_FREE(ht);
+        HT_FREE_INC;
+    }
+
     return HT_OK;
 }
 
@@ -212,14 +243,11 @@ size_t ht_capacity(HashTable *ht)
 }
 
 //--------------------------------------
-// return table capacity
+// attempt to resize the table
 //--------------------------------------
-HashTable *ht_grow(HashTable *ht)
+static HashTable* ht_resize(HashTable* ht, size_t new_size)
 {
     assert(ht && ht->table);
-
-    // increase (double) table size
-    size_t new_size = ht->size << 1;
 
     // alloc new table
     size_t new_table_size = sizeof(HashTable_Entry) * new_size;
@@ -249,8 +277,11 @@ HashTable *ht_grow(HashTable *ht)
     }
 
     // free old table
-    HT_FREE(ht->table);
-    HT_FREE_INC;
+    if (ht->table != ht->small_table)
+    {
+        HT_FREE(ht->table);
+        HT_FREE_INC;
+    }
 
     // update hash table state
     ht->table = new_table;
@@ -263,15 +294,47 @@ HashTable *ht_grow(HashTable *ht)
 }
 
 //--------------------------------------
+// attempt to grow the table
+//--------------------------------------
+HashTable *ht_grow(HashTable *ht)
+{
+    assert(ht && ht->table);
+
+    // increase (double) table size
+    size_t new_size = ht->size << 1;
+
+    return ht_resize(ht, new_size);
+}
+
+//--------------------------------------
+// try to shrink the table
+//--------------------------------------
+HashTable* ht_shrink(HashTable* ht)
+{
+	assert(ht && ht->table);
+
+	// decrease (half) table size
+	size_t new_size = ht->size >> 1;
+
+    return ht_resize(ht, new_size);
+}
+
+//--------------------------------------
 // print some useful debug stats
+//--------------------------------------
+void ht_debug_stats()
+{
+#if HT_DEBUG_STATS == 1
+    printf("All tables -> allocs: %zu, frees: %zu, freelist: %d\n", allocs, frees, ht_free_count);
+#endif
+}
+
+//--------------------------------------
+// print some useful table stats
 //--------------------------------------
 void ht_stats(HashTable* ht)
 {
     assert(ht && ht->table);
 
-#if HT_DEBUG_STATS == 1
-    printf("All tables -> allocs: %zu, frees: %zu\n", allocs, frees);
-#endif
-
-printf("This table -> entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
+    printf("This table -> entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
 }

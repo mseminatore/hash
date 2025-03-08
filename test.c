@@ -17,7 +17,7 @@ void test_create()
 
     TEST(ht == NULL);
 
-    ht = ht_init();
+    ht = ht_create();
     TEST(ht != NULL);
     TEST(ht->table != NULL);
     TEST(ht->entries == 0);
@@ -104,4 +104,10 @@ void test_main(int argc, char *argv[])
     test_find();
     test_remove();
     test_destroy();
+
+    ht = NULL;
+    test_create();
+    test_destroy();
+
+    ht_debug_stats();
 }

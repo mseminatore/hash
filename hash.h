@@ -49,18 +49,21 @@ typedef struct HashTable
     size_t entries;
     size_t collisions;
     size_t recent_collisions;
+    HashTable_Entry small_table[HT_DEFAULT_SIZE];
 } HashTable;
 
 //--------------------------------------
 //
 //--------------------------------------
-HashTable *ht_init();
+HashTable *ht_create();
 int ht_free(HashTable *ht);
 value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key);
 int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
+HashTable *ht_shrink(HashTable *ht);
 void ht_stats(HashTable* ht);
+void ht_debug_stats();
 
 #endif // __HASH_H
