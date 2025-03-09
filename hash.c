@@ -183,6 +183,14 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
 
         hte = &table[bin];
 
+        // if entry is a match, update the value
+        if (HASH_MATCH(hte, hash, key))
+        {
+            hte->value = value;
+            return HT_OK;
+        }
+
+        // if entry unused, fill it and return success
         if (HASH_EMPTY(hte))
         {
             hte->hash = hash;
