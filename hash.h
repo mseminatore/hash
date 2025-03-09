@@ -65,5 +65,7 @@ HashTable *ht_grow(HashTable *ht);
 HashTable *ht_shrink(HashTable *ht);
 void ht_stats(HashTable* ht);
 void ht_debug_stats();
+int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalue);
+void ht_finished();
 
 #endif // __HASH_H

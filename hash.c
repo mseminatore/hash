@@ -33,6 +33,7 @@ HashTable *ht_create()
 {
     HashTable* ht;
     
+    // grab table from freelist if available
     if (ht_free_count > 0)
 	{
 		ht = ht_free_list[--ht_free_count];
@@ -119,7 +120,57 @@ int ht_free(HashTable *ht)
 }
 
 //--------------------------------------
-// find an entry
+// cleanup the free list
+//--------------------------------------
+void ht_finished()
+{
+    while(ht_free_count > 0)
+    {
+        HT_FREE(ht_free_list[--ht_free_count]);
+        HT_FREE_INC;
+    }
+}
+
+//--------------------------------------
+// iterate over a table
+//--------------------------------------
+int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalue)
+{
+    key_value_t key = NULL;
+    value_value_t value = NULL;
+
+    assert(ht && ht->table);
+
+    // get index and check bounds
+    size_t index = *ipos;
+    if (index < 0 || index > ht->size)
+        return 0;
+
+    while (index < ht->size && HASH_EMPTY(&ht->table[index]))
+    {
+        index++;
+    }
+
+    // see if we hit the end of the table
+    if (index >= ht->size)
+        return 0;
+
+    key = ht->table[index].key;
+    value = ht->table[index].value;
+
+    // point to next entry
+    *ipos = index + 1;
+    if (pkey)
+        *pkey = key;
+
+    if (pvalue)
+        *pvalue = value;
+
+    return 1;
+}
+
+//--------------------------------------
+// try to find an entry in the table
 //--------------------------------------
 value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
 {

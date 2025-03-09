@@ -39,23 +39,34 @@ void test_size()
 //--------------------------------------
 //
 //--------------------------------------
+void print_table()
+{
+    key_value_t key;
+    value_value_t value;
+
+    puts("{");
+    size_t index = 0;
+    while(ht_next(ht, &index, &key, &value))
+    {
+        printf("'%s' : '%s',\n", (char*)key, (char*)value);
+    }
+    puts("}\n");
+}
+
+//--------------------------------------
+// test inserting items
+//--------------------------------------
 void test_insert()
 {
     SUITE("Insert");
 
     for (int i = 0; i < 9; i++)
     {
-        TEST(HT_OK == ht_insert(ht, (hash_value_t)keys[i], keys[i], avalue));
+        TEST(HT_OK == ht_insert(ht, (hash_value_t)keys[i], keys[i], keys[i]));
     }
 
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
-    //TEST(HT_OK == ht_insert(ht, (hash_value_t)akey, akey, avalue));
+    print_table();
+
     ht_stats(ht);
 
     TEST(NULL == ht_shrink(ht));
@@ -65,7 +76,7 @@ void test_insert()
 }
 
 //--------------------------------------
-//
+// test finding table items
 //--------------------------------------
 void test_find()
 {
@@ -78,7 +89,23 @@ void test_find()
 }
 
 //--------------------------------------
-//
+// test iterating over table items
+//--------------------------------------
+void test_iterate()
+{
+    SUITE("Iterate");
+
+    size_t count = 0, index = 0;
+    while(ht_next(ht, &index, NULL, NULL))
+    {
+        count++;
+    }
+
+    TEST(count == 9);
+}
+
+//--------------------------------------
+// test removing table items
 //--------------------------------------
 void test_remove()
 {
@@ -87,7 +114,7 @@ void test_remove()
 }
 
 //--------------------------------------
-//
+// test cleanup
 //--------------------------------------
 void test_destroy()
 {
@@ -110,6 +137,7 @@ void test_main(int argc, char *argv[])
     test_size();
     test_insert();
     test_find();
+    test_iterate();
     test_remove();
     test_destroy();
 
