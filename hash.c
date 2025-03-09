@@ -19,11 +19,14 @@ static int ht_free_count = 0;
 #if HT_DEBUG_STATS == 1
 static size_t allocs = 0;
 static size_t frees = 0;
+static size_t resuse = 0;
 #define HT_ALLOC_INC allocs++
 #define HT_FREE_INC frees++
+#define HT_RESUSE resuse++
 #else
 #define HT_ALLOC_INC
 #define HT_FREE_INC
+#define HT_RESUSE
 #endif
 
 //--------------------------------------
@@ -37,6 +40,7 @@ HashTable *ht_create()
     if (ht_free_count > 0)
 	{
 		ht = ht_free_list[--ht_free_count];
+        HT_RESUSE;
 	}
 	else
 	{
@@ -53,6 +57,7 @@ HashTable *ht_create()
     ht->entries = 0;
     ht->recent_collisions = 0;
     ht->size = HT_DEFAULT_SIZE;
+    ht->mask = ht->size - 1;
 
     size_t table_size = sizeof(HashTable_Entry) * ht->size;
 
@@ -177,7 +182,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     assert(ht && ht->table);
 
     // look at entry based on hash
-    size_t start_bin = hash & (ht->size - 1);
+    size_t start_bin = hash & ht->mask;
     HashTable_Entry* hte = &ht->table[start_bin];
 
     if (HASH_MATCH(hte, hash, key))
@@ -186,7 +191,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     }
 
     // if not equal, start linear search for match
-    size_t bin = (start_bin + 1) & (ht->size - 1);
+    size_t bin = (start_bin + 1) & ht->mask;
 
     while (bin != start_bin)
     {
@@ -197,7 +202,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
             return hte->value;
         }
 
-        bin = (bin + 1) & (ht->size - 1);
+        bin = (bin + 1) & ht->mask;
     }
 
     // if not found, fail
@@ -209,8 +214,10 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t hash, key_value_t key, value_value_t value, size_t size)
 {
+    size_t mask = size - 1;
+
     // check for free entry based on hash
-    size_t start_bin = hash & (size - 1);
+    size_t start_bin = hash & mask;
 
     HashTable_Entry* hte = &table[start_bin];
 
@@ -224,7 +231,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
     }
 
     // otherwise start linear search for open bin
-    size_t bin = (start_bin + 1) & (size - 1);
+    size_t bin = (start_bin + 1) & mask;
 
     while (bin != start_bin)
     {
@@ -250,7 +257,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
             return HT_OK;
         }
 
-        bin = (bin + 1) & (size - 1);
+        bin = (bin + 1) & mask;
     }
 
     // if no free slot found, then fail
@@ -345,6 +352,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     // update hash table state
     ht->table = new_table;
     ht->size = new_size;
+    ht->mask = new_size - 1;
 
     // clear recent collisions
     ht->recent_collisions = 0;
@@ -388,7 +396,7 @@ HashTable* ht_shrink(HashTable* ht)
 void ht_debug_stats()
 {
 #if HT_DEBUG_STATS == 1
-    printf("All tables -> allocs: %zu, frees: %zu, freelist: %d\n", allocs, frees, ht_free_count);
+    printf("All tables -> allocs: %zu, frees: %zu, resuse: %zu, freelist: %d\n", allocs, frees, resuse, ht_free_count);
 #endif
 }
 

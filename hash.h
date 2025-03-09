@@ -45,6 +45,7 @@ typedef struct HashTable_Entry
 typedef struct HashTable
 {
     HashTable_Entry *table;
+    size_t mask;
     size_t size;
     size_t entries;
     size_t collisions;
