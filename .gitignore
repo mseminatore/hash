@@ -1,7 +1,11 @@
 # Cmake dirs
 build/
 
+# OSX files
 .DS_Store
+
+# binary files
+ht_test
 
 # Prerequisites
 *.d
