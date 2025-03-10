@@ -17,7 +17,7 @@ $(LIBNAME): $(OBJS)
 ht_test: $(LIBNAME) ./testy/test_main.o test.o
 	$(CC) -o $@ $^ $(LFLAGS)
 
-test:
+test: ht_test
 	./ht_test
 
 clean:
