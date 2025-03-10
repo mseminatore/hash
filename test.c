@@ -9,7 +9,7 @@ char *akey = "foo";
 char *avalue = "bar";
 
 //--------------------------------------
-//
+// test table creation
 //--------------------------------------
 void test_create()
 {
@@ -26,14 +26,14 @@ void test_create()
 }
 
 //--------------------------------------
-//
+// test table size queries
 //--------------------------------------
 void test_size()
 {
     SUITE("Size");
 
     TEST(ht_capacity(ht) == HT_DEFAULT_SIZE);
-    TEST(ht_size(ht) == 0);
+    TESTEX("empty table size is 0", ht_size(ht) == 0);
 }
 
 //--------------------------------------
@@ -102,7 +102,7 @@ void test_iterate()
         count++;
     }
 
-    TEST(count == 9);
+    TEST(count == ht_size(ht));
 }
 
 //--------------------------------------

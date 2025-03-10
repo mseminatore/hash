@@ -291,6 +291,33 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
 }
 
 //--------------------------------------
+//
+//--------------------------------------
+int ht_remove(HashTable* ht, key_value_t key)
+{
+    assert(ht && ht->table);
+
+    // find key
+    HashTable_Entry *hte = ht->table;
+
+    for (size_t i = 0; i < ht->size; i++)
+    {
+        // if found, mark entry as empty
+        if (hte->key == key)
+        {
+            hte->hash = 0;
+            hte->key = 0;
+            hte->value = 0;
+            return HT_OK;
+        }
+        hte++;
+    }
+
+    // if not found, return failure
+    return HT_FAIL;
+}
+
+//--------------------------------------
 // return current size
 //--------------------------------------
 size_t ht_size(HashTable *ht)

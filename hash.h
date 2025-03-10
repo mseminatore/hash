@@ -72,5 +72,6 @@ void ht_stats(HashTable* ht);
 void ht_debug_stats();
 int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalue);
 void ht_finished();
+int ht_remove(HashTable* ht, key_value_t key);
 
 #endif // __HASH_H
