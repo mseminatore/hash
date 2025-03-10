@@ -71,6 +71,7 @@ void test_insert()
 
     TEST(NULL == ht_shrink(ht));
     TEST(ht_grow(ht) != NULL);
+    TEST(ht_grow(ht) != NULL);
     TEST(NULL != ht_shrink(ht));
     ht_stats(ht);
 }

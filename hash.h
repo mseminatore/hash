@@ -7,19 +7,23 @@
 #define HT_FAIL 0
 
 #ifndef HT_ALLOC
-#define HT_ALLOC malloc
+    #define HT_ALLOC malloc
 #endif
 
 #ifndef HT_FREE
-#define HT_FREE free
+    #define HT_FREE free
 #endif
 
 #ifndef HT_DEFAULT_SIZE
-#define HT_DEFAULT_SIZE 8
+    #define HT_DEFAULT_SIZE 8
 #endif
 
 #ifndef HT_LOAD_FACTOR
-#define HT_LOAD_FACTOR 0.67f
+    #define HT_LOAD_FACTOR 0.67f
+#endif
+
+#ifndef HT_PERTURB
+    #define HT_PERTURB 5
 #endif
 
 //--------------------------------------
