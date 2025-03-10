@@ -112,6 +112,7 @@ void test_remove()
 {
     SUITE("Remove");
 
+    TEST(HT_OK == ht_remove(ht, keys[0]));
 }
 
 //--------------------------------------
