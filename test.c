@@ -112,7 +112,11 @@ void test_remove()
 {
     SUITE("Remove");
 
-    TEST(HT_OK == ht_remove(ht, keys[0]));
+    for (int i = 0; i < 9; i++)
+    {
+        TEST(HT_OK == ht_remove(ht, keys[i]));
+//        TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
+    }
 }
 
 //--------------------------------------
@@ -141,6 +145,7 @@ void test_main(int argc, char *argv[])
     test_find();
     test_iterate();
     test_remove();
+    ht_stats(ht);
     test_destroy();
 
     ht = NULL;
@@ -148,4 +153,5 @@ void test_main(int argc, char *argv[])
     test_destroy();
 
     ht_debug_stats();
+    ht_finished();
 }

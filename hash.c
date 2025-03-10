@@ -5,28 +5,31 @@
 
 #include "hash.h"
 
+// configuration defines
 #define HT_AUTO_GROW 1
 #define HT_DEBUG_STATS 1
+#define HT_MAX_FREE 16
+#define HT_LINEAR 0
 
+// helper macros
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
 
 // maintain a free list of already alloc'd tables
-#define HT_MAX_FREE 16
 static HashTable *ht_free_list[HT_MAX_FREE];
 static int ht_free_count = 0;
 
 #if HT_DEBUG_STATS == 1
-static size_t allocs = 0;
-static size_t frees = 0;
-static size_t resuse = 0;
-#define HT_ALLOC_INC allocs++
-#define HT_FREE_INC frees++
-#define HT_RESUSE resuse++
+    static size_t allocs = 0;
+    static size_t frees = 0;
+    static size_t resuse = 0;
+    #define HT_ALLOC_INC allocs++
+    #define HT_FREE_INC frees++
+    #define HT_RESUSE resuse++
 #else
-#define HT_ALLOC_INC
-#define HT_FREE_INC
-#define HT_RESUSE
+    #define HT_ALLOC_INC
+    #define HT_FREE_INC
+    #define HT_RESUSE
 #endif
 
 //--------------------------------------
@@ -191,7 +194,11 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
     }
 
     // if not equal, start linear search for match
+#if HT_LINEAR == 1
     size_t bin = (start_bin + 1) & ht->mask;
+#else
+    size_t bin = (5 * start_bin + 1) & ht->mask;
+#endif
 
     while (bin != start_bin)
     {
@@ -202,7 +209,12 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
             return hte->value;
         }
 
+#if HT_LINEAR == 1
         bin = (bin + 1) & ht->mask;
+#else
+        bin = (5 * bin + 1) & ht->mask;
+#endif
+
     }
 
     // if not found, fail
@@ -231,7 +243,11 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
     }
 
     // otherwise start linear search for open bin
+#if HT_LINEAR == 1
     size_t bin = (start_bin + 1) & mask;
+#else
+    size_t bin = (5 * start_bin + 1) & mask;
+#endif
 
     while (bin != start_bin)
     {
@@ -257,7 +273,11 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
             return HT_OK;
         }
 
+#if HT_LINEAR == 1
         bin = (bin + 1) & mask;
+#else
+        bin = (5 * bin + 1) & mask;
+#endif
     }
 
     // if no free slot found, then fail
@@ -291,7 +311,7 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
 }
 
 //--------------------------------------
-//
+// attempt to remove entry from table
 //--------------------------------------
 int ht_remove(HashTable* ht, key_value_t key)
 {
@@ -308,6 +328,7 @@ int ht_remove(HashTable* ht, key_value_t key)
             hte->hash = 0;
             hte->key = 0;
             hte->value = 0;
+            ht->entries--;
             return HT_OK;
         }
         hte++;
