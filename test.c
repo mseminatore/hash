@@ -4,6 +4,8 @@
 
 HashTable *ht = NULL;
 
+#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
+
 char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy", "dog"};
 char *akey = "foo";
 char *avalue = "bar";
@@ -60,7 +62,7 @@ void test_insert()
 {
     SUITE("Insert");
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
         TEST(HT_OK == ht_insert(ht, (hash_value_t)keys[i], keys[i], keys[i]));
     }
@@ -83,7 +85,7 @@ void test_find()
 {
     SUITE("Find");
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
         TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
     }
@@ -112,7 +114,7 @@ void test_remove()
 {
     SUITE("Remove");
 
-    for (int i = 0; i < 9; i++)
+    for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
         TEST(HT_OK == ht_remove(ht, keys[i]));
 //        TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
