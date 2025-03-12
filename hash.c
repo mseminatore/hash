@@ -142,18 +142,19 @@ void ht_finished()
 //--------------------------------------
 // iterate over a table
 //--------------------------------------
-int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalue)
+int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 {
-    key_value_t key = NULL;
-    value_value_t value = NULL;
+    ht_key_t key = NULL;
+    ht_value_t value = NULL;
 
     assert(ht && ht->table);
 
     // get index and check bounds
     size_t index = *ipos;
     if (index < 0 || index > ht->size)
-        return 0;
+        return HT_FAIL;
 
+    // find next table entry
     while (index < ht->size && HASH_EMPTY(&ht->table[index]))
     {
         index++;
@@ -161,27 +162,31 @@ int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalu
 
     // see if we hit the end of the table
     if (index >= ht->size)
-        return 0;
+        return HT_FAIL;
 
     key = ht->table[index].key;
     value = ht->table[index].value;
 
     // point to next entry
     *ipos = index + 1;
+
+    // return key/value if 
     if (pkey)
         *pkey = key;
 
     if (pvalue)
         *pvalue = value;
 
-    return 1;
+    return HT_OK;
 }
 
 //--------------------------------------
 // try to find an entry in the table
 //--------------------------------------
-value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
+ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 {
+    size_t perturb = hash;
+
     assert(ht && ht->table);
 
     // look at entry based on hash
@@ -224,7 +229,7 @@ value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key)
 //--------------------------------------
 // internal insert
 //--------------------------------------
-static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t hash, key_value_t key, value_value_t value, size_t size)
+static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
     size_t mask = size - 1;
 
@@ -287,7 +292,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, hash_value_t
 //--------------------------------------
 // insert an entry
 //--------------------------------------
-int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t value)
+int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
 {
     assert(ht && ht->table);
 
@@ -313,7 +318,7 @@ int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t v
 //--------------------------------------
 // attempt to remove entry from table
 //--------------------------------------
-int ht_remove(HashTable* ht, key_value_t key)
+int ht_remove(HashTable* ht, ht_key_t key)
 {
     assert(ht && ht->table);
 

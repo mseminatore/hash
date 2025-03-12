@@ -1,14 +1,29 @@
 #include <stdio.h>
+#include <string.h>
+#include <stdlib.h>
 #include "hash.h"
 #include "testy/test.h"
 
 HashTable *ht = NULL;
 
-#define ARRAY_SIZE(a) (sizeof(a) / sizeof(a[0]))
-
 char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy", "dog"};
 char *akey = "foo";
 char *avalue = "bar";
+
+//--------------------------------------
+// MurmurOAAT32
+//--------------------------------------
+static uint32_t hash(const char* key)
+{
+    uint32_t h = 3323198485ul;
+    for (; *key; ++key) 
+    {
+        h ^= *key;
+        h *= 0x5bd1e995;
+        h ^= h >> 15;
+    }
+    return h;
+}
 
 //--------------------------------------
 // test table creation
@@ -43,8 +58,8 @@ void test_size()
 //--------------------------------------
 void print_table()
 {
-    key_value_t key;
-    value_value_t value;
+    ht_key_t key;
+    ht_value_t value;
 
     puts("{");
     size_t index = 0;
@@ -64,7 +79,7 @@ void test_insert()
 
     for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
-        TEST(HT_OK == ht_insert(ht, (hash_value_t)keys[i], keys[i], keys[i]));
+        TEST(HT_OK == ht_insert(ht, (ht_hash_t)hash(keys[i]), keys[i], keys[i]));
     }
 
     print_table();
@@ -87,7 +102,7 @@ void test_find()
 
     for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
-        TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
+        TEST(ht_find(ht, (ht_hash_t)hash(keys[i]), keys[i]));
     }
 }
 
@@ -117,7 +132,6 @@ void test_remove()
     for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
         TEST(HT_OK == ht_remove(ht, keys[i]));
-//        TEST(ht_find(ht, (hash_value_t)keys[i], keys[i]));
     }
 }
 
@@ -137,6 +151,33 @@ void test_destroy()
 //--------------------------------------
 //
 //--------------------------------------
+void test_big_words()
+{
+    SUITE("Big Words");
+
+    FILE *fp = fopen("..\\words_alpha.txt", "r");
+    if (fp == NULL)
+	{
+		perror("fopen");
+		return;
+	}
+
+    ht = ht_create();
+    char word[256];
+    while(fgets(word, sizeof(word), fp))
+	{
+		char *p = strchr(word, '\n');
+		if (p) *p = 0;
+        char *pword = strdup(word);
+		ht_insert(ht, (ht_hash_t)hash(word), pword, pword);
+	}
+
+    fclose(fp);
+}
+
+//--------------------------------------
+//
+//--------------------------------------
 void test_main(int argc, char *argv[])
 {
     MODULE("hashtable");
@@ -151,8 +192,12 @@ void test_main(int argc, char *argv[])
     test_destroy();
 
     ht = NULL;
-    test_create();
+    test_big_words();
+    ht_stats(ht);
     test_destroy();
+
+    //test_create();
+    //test_destroy();
 
     ht_debug_stats();
     ht_finished();

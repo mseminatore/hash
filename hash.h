@@ -29,18 +29,18 @@
 //--------------------------------------
 //
 //--------------------------------------
-typedef intptr_t hash_value_t;
-typedef void* key_value_t;
-typedef void* value_value_t;
+typedef intptr_t ht_hash_t;
+typedef void* ht_key_t;
+typedef void* ht_value_t;
 
 //--------------------------------------
 //
 //--------------------------------------
 typedef struct HashTable_Entry
 {
-    hash_value_t hash;
-    key_value_t key;
-    value_value_t value;
+    ht_hash_t hash;
+    ht_key_t key;
+    ht_value_t value;
 } HashTable_Entry;
 
 //--------------------------------------
@@ -62,16 +62,16 @@ typedef struct HashTable
 //--------------------------------------
 HashTable *ht_create();
 int ht_free(HashTable *ht);
-value_value_t ht_find(HashTable *ht, hash_value_t hash, key_value_t key);
-int ht_insert(HashTable *ht, hash_value_t hash, key_value_t key, value_value_t value);
+ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key);
+int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
 HashTable *ht_shrink(HashTable *ht);
 void ht_stats(HashTable* ht);
 void ht_debug_stats();
-int ht_next(HashTable* ht, size_t *ipos, key_value_t *pkey, value_value_t *pvalue);
+int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue);
 void ht_finished();
-int ht_remove(HashTable* ht, key_value_t key);
+int ht_remove(HashTable* ht, ht_key_t key);
 
 #endif // __HASH_H
