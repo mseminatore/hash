@@ -4,6 +4,12 @@
 #include "hash.h"
 #include "testy/test.h"
 
+#ifdef _WIN32
+    #define DIR_PREFIX "..\\"
+#else
+    #define DIR_PREFIX ""
+#endif
+
 HashTable *ht = NULL;
 
 char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy", "dog"};
@@ -38,8 +44,9 @@ void test_create()
     TEST(ht != NULL);
     TEST(ht->table != NULL);
     TEST(ht->entries == 0);
-    TEST(ht->collisions == 0);
-    TEST(ht->recent_collisions == 0);
+    TEST(ht->insert_collisions == 0);
+    TEST(ht->search_collisions == 0);
+    TEST(ht->recent_insert_collisions == 0);
 }
 
 //--------------------------------------
@@ -148,12 +155,6 @@ void test_destroy()
     TEST(HT_OK == ht_free(ht));
 }
 
-#ifdef _WIN32
-    #define DIR_PREFIX "..\\"
-#else
-    #define DIR_PREFIX ""
-#endif
-
 //--------------------------------------
 //
 //--------------------------------------
@@ -175,7 +176,7 @@ void test_big_words()
 		char *p = strchr(word, '\n');
 		if (p) *p = 0;
         char *pword = strdup(word);
-		ht_insert(ht, (ht_hash_t)hash(word), pword, pword);
+		assert(HT_OK == ht_insert(ht, (ht_hash_t)hash(word), pword, pword));
 	}
 
     fclose(fp);

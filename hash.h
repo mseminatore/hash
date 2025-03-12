@@ -52,8 +52,9 @@ typedef struct HashTable
     size_t mask;
     size_t size;
     size_t entries;
-    size_t collisions;
-    size_t recent_collisions;
+    size_t insert_collisions;
+    size_t search_collisions;
+    size_t recent_insert_collisions;
     HashTable_Entry small_table[HT_DEFAULT_SIZE];
 } HashTable;
 

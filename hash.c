@@ -56,9 +56,10 @@ HashTable *ht_create()
         return NULL;
     }
 
-    ht->collisions = 0;
+    ht->insert_collisions = 0;
+    ht->search_collisions = 0;
     ht->entries = 0;
-    ht->recent_collisions = 0;
+    ht->recent_insert_collisions = 0;
     ht->size = HT_DEFAULT_SIZE;
     ht->mask = ht->size - 1;
 
@@ -107,9 +108,10 @@ int ht_free(HashTable *ht)
 	}
 
     // clear struct contents
-    ht->collisions = 0;
+    ht->insert_collisions = 0;
+    ht->search_collisions = 0;
     ht->entries = 0;
-    ht->recent_collisions = 0;
+    ht->recent_insert_collisions = 0;
     ht->size = 0;
 //    ht->table = 0;
 
@@ -207,6 +209,7 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 
     while (bin != start_bin)
     {
+        ht->search_collisions++;
         hte = &ht->table[bin];
 
         if (HASH_MATCH(hte, hash, key))
@@ -257,8 +260,8 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
     while (bin != start_bin)
     {
         // mark collisions
-        ht->collisions++;
-        ht->recent_collisions++;
+        ht->insert_collisions++;
+        ht->recent_insert_collisions++;
 
         hte = &table[bin];
 
@@ -298,8 +301,8 @@ int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
-    float load_factor = (float)ht_size(ht) / ht_capacity(ht);
-    if (load_factor > HT_LOAD_FACTOR)
+    // load factor of 0.5 to 0.67 is good time to grow
+    if (2 * ht->entries >= ht->size)
     {
         if (!ht_grow(ht))
         {
@@ -408,7 +411,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     ht->mask = new_size - 1;
 
     // clear recent collisions
-    ht->recent_collisions = 0;
+    ht->recent_insert_collisions = 0;
 
     return ht;
 }
@@ -460,5 +463,5 @@ void ht_stats(HashTable* ht)
 {
     assert(ht && ht->table);
 
-    printf("This table -> entries: %zu, size: %zu, total collides: %zu, recent collides: %zu\n", ht->entries, ht->size, ht->collisions, ht->recent_collisions);
+    printf("This table -> entries: %zu, size: %zu, insert collides: %zu, recent insert collides: %zu, search collides: %zu\n", ht->entries, ht->size, ht->insert_collisions, ht->recent_insert_collisions, ht->search_collisions);
 }
