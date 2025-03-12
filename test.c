@@ -148,6 +148,12 @@ void test_destroy()
     TEST(HT_OK == ht_free(ht));
 }
 
+#ifdef _WIN32
+    #define DIR_PREFIX "..\\"
+#else
+    #define DIR_PREFIX ""
+#endif
+
 //--------------------------------------
 //
 //--------------------------------------
@@ -155,7 +161,7 @@ void test_big_words()
 {
     SUITE("Big Words");
 
-    FILE *fp = fopen("..\\words_alpha.txt", "r");
+    FILE *fp = fopen(DIR_PREFIX"words_alpha.txt", "r");
     if (fp == NULL)
 	{
 		perror("fopen");
