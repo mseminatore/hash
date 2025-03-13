@@ -15,6 +15,12 @@
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
 
+#ifdef _DEBUG
+#define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
+#else
+#define CHECK_THAT(cond)            if (!(cond)) return 0;
+#endif
+
 // maintain a free list of already alloc'd tables
 static HashTable *ht_free_list[HT_MAX_FREE];
 static int ht_free_count = 0;
@@ -77,10 +83,7 @@ HashTable *ht_create()
 //--------------------------------------
 int ht_free(HashTable *ht)
 {
-    if (!ht)
-    {
-        return HT_FAIL;
-    }
+    CHECK_THAT(ht && ht->table);
 
     // TODO - warn if table is not empty?
 
@@ -99,7 +102,6 @@ int ht_free(HashTable *ht)
     ht->entries = 0;
     ht->recent_insert_collisions = 0;
     ht->size = 0;
-//    ht->table = 0;
 
     // add to free list
     if (ht_free_count < HT_MAX_FREE)
@@ -135,7 +137,7 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
     ht_key_t key = NULL;
     ht_value_t value = NULL;
 
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     // get index and check bounds
     size_t index = *ipos;
@@ -175,7 +177,7 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 {
     size_t perturb = hash;
 
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     // look at entry based on hash
     size_t start_bin = hash & ht->mask;
@@ -220,6 +222,8 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
+    CHECK_THAT(ht && table);
+
     size_t mask = size - 1;
 
     // check for free entry based on hash
@@ -283,7 +287,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 //--------------------------------------
 int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
@@ -309,11 +313,10 @@ int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
 //--------------------------------------
 int ht_remove(HashTable* ht, ht_key_t key)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
-    // find key
+    // look for key in table and if found, remove
     HashTable_Entry *hte = ht->table;
-
     for (size_t i = 0; i < ht->size; i++)
     {
         // if found, mark entry as empty
@@ -337,7 +340,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
 //--------------------------------------
 size_t ht_size(HashTable *ht)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
     return (ht && ht->table) ? ht->entries : 0;
 }
 
@@ -346,7 +349,7 @@ size_t ht_size(HashTable *ht)
 //--------------------------------------
 size_t ht_capacity(HashTable *ht)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
     return (ht && ht->table) ? ht->size : 0;
 }
 
@@ -355,7 +358,7 @@ size_t ht_capacity(HashTable *ht)
 //--------------------------------------
 static HashTable* ht_resize(HashTable* ht, size_t new_size)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     // alloc new table
     size_t new_table_size = sizeof(HashTable_Entry) * new_size;
@@ -407,7 +410,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
 //--------------------------------------
 HashTable *ht_grow(HashTable *ht)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     // increase (double) table size
     size_t new_size = ht->size << 1;
@@ -420,7 +423,7 @@ HashTable *ht_grow(HashTable *ht)
 //--------------------------------------
 HashTable* ht_shrink(HashTable* ht)
 {
-	assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
 	// decrease (half) table size
 	size_t new_size = ht->size >> 1;
@@ -447,7 +450,7 @@ void ht_debug_stats()
 //--------------------------------------
 void ht_stats(HashTable* ht)
 {
-    assert(ht && ht->table);
+    CHECK_THAT(ht && ht->table);
 
     printf("This table -> entries: %zu, size: %zu, insert collides: %zu, recent insert collides: %zu, search collides: %zu\n", ht->entries, ht->size, ht->insert_collisions, ht->recent_insert_collisions, ht->search_collisions);
 }
