@@ -74,10 +74,11 @@ size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
 HashTable *ht_shrink(HashTable *ht);
-void ht_stats(HashTable* ht);
-void ht_debug_stats();
 int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue);
 void ht_finished();
 int ht_remove(HashTable* ht, ht_key_t key);
+
+void ht_stats(HashTable* ht);
+void ht_debug_stats();
 
 #endif // __HASH_H

@@ -44,9 +44,12 @@ void test_create()
     TEST(ht != NULL);
     TEST(ht->table != NULL);
     TEST(ht->entries == 0);
+
+#if HT_TRACK_STATS == 1
     TEST(ht->insert_collisions == 0);
     TEST(ht->search_collisions == 0);
     TEST(ht->recent_insert_collisions == 0);
+#endif
 }
 
 //--------------------------------------

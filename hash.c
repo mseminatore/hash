@@ -72,10 +72,13 @@ HashTable *ht_create()
         return NULL;
     }
 
+#if HT_TRACK_STATS == 1
     ht->insert_collisions = 0;
     ht->search_collisions = 0;
-    ht->entries = 0;
     ht->recent_insert_collisions = 0;
+#endif
+
+    ht->entries = 0;
     ht->size = HT_DEFAULT_SIZE;
     ht->mask = ht->size - 1;
     ht->table = ht->small_table;
@@ -107,10 +110,13 @@ int ht_free(HashTable *ht)
 	}
 
     // clear struct contents
+#if HT_TRACK_STATS == 1
     ht->insert_collisions = 0;
     ht->search_collisions = 0;
-    ht->entries = 0;
     ht->recent_insert_collisions = 0;
+#endif
+
+    ht->entries = 0;
     ht->size = 0;
 
     // add to free list
@@ -410,7 +416,9 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     ht->mask = new_size - 1;
 
     // clear recent collisions
+#if HT_TRACK_STATS == 1
     ht->recent_insert_collisions = 0;
+#endif
 
     return ht;
 }
@@ -460,7 +468,8 @@ void ht_debug_stats()
 //--------------------------------------
 void ht_stats(HashTable* ht)
 {
-    CHECK_THAT(ht && ht->table);
+    if (!ht || !ht->table)
+        return;
 
 #if HT_TRACK_STATS == 1
     printf("This table -> entries: %zu, size: %zu, insert collides: %zu, recent insert collides: %zu, search collides: %zu\n", ht->entries, ht->size, ht->insert_collisions, ht->recent_insert_collisions, ht->search_collisions);
