@@ -62,24 +62,10 @@ HashTable *ht_create()
     ht->recent_insert_collisions = 0;
     ht->size = HT_DEFAULT_SIZE;
     ht->mask = ht->size - 1;
-
-    size_t table_size = sizeof(HashTable_Entry) * ht->size;
-
-#if 1
-    ht->table = ht->small_table; 
-#else
-    ht->table = HT_ALLOC(table_size);
-    if (!ht->table)
-    {
-        // release table entry and fail
-        HT_FREE(ht);
-        HT_FREE_INC;
-        return NULL;
-    }
-    HT_ALLOC_INC;
-#endif
+    ht->table = ht->small_table;
 
     // zero table mem
+    size_t table_size = sizeof(HashTable_Entry) * ht->size;
     memset(ht->table, 0, table_size);
     return ht;
 }
