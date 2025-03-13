@@ -6,6 +6,9 @@
 #define HT_OK   1
 #define HT_FAIL 0
 
+// configuration
+#define HT_TRACK_STATS 1
+
 #ifndef HT_ALLOC
     #define HT_ALLOC malloc
 #endif
@@ -27,14 +30,14 @@
 #endif
 
 //--------------------------------------
-//
+// 
 //--------------------------------------
 typedef intptr_t ht_hash_t;
 typedef void* ht_key_t;
 typedef void* ht_value_t;
 
 //--------------------------------------
-//
+// table entry structure
 //--------------------------------------
 typedef struct HashTable_Entry
 {
@@ -52,9 +55,11 @@ typedef struct HashTable
     size_t mask;
     size_t size;
     size_t entries;
+#if HT_TRACK_STATS == 1
     size_t insert_collisions;
     size_t search_collisions;
     size_t recent_insert_collisions;
+#endif
     HashTable_Entry small_table[HT_DEFAULT_SIZE];
 } HashTable;
 

@@ -38,6 +38,16 @@ static int ht_free_count = 0;
     #define HT_RESUSE
 #endif
 
+#if HT_TRACK_STATS == 1
+    #define HT_INSERT_COLLIDE(ht)       (ht)->insert_collisions++;
+    #define HT_SEARCH_COLLIDE(ht)       (ht)->search_collisions++;
+    #define HT_RECENT_INSERT_COLLIDE(ht) (ht)->recent_insert_collisions++;
+#else
+    #define HT_INSERT_COLLIDE(ht)
+    #define HT_SEARCH_COLLIDE(ht)
+    #define HT_RECENT_INSERT_COLLIDE(ht)
+#endif
+
 //--------------------------------------
 // initialize hash table
 //--------------------------------------
@@ -197,7 +207,7 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 
     while (bin != start_bin)
     {
-        ht->search_collisions++;
+        HT_SEARCH_COLLIDE(ht);
         hte = &ht->table[bin];
 
         if (HASH_MATCH(hte, hash, key))
@@ -250,8 +260,8 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
     while (bin != start_bin)
     {
         // mark collisions
-        ht->insert_collisions++;
-        ht->recent_insert_collisions++;
+        HT_INSERT_COLLIDE(ht);
+        HT_RECENT_INSERT_COLLIDE(ht);
 
         hte = &table[bin];
 
@@ -452,5 +462,7 @@ void ht_stats(HashTable* ht)
 {
     CHECK_THAT(ht && ht->table);
 
+#if HT_TRACK_STATS == 1
     printf("This table -> entries: %zu, size: %zu, insert collides: %zu, recent insert collides: %zu, search collides: %zu\n", ht->entries, ht->size, ht->insert_collisions, ht->recent_insert_collisions, ht->search_collisions);
+#endif
 }
