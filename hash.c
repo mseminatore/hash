@@ -197,37 +197,26 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 
     // look at entry based on hash
     size_t start_bin = hash & ht->mask;
+    size_t bin = start_bin;
     HashTable_Entry* hte = &ht->table[start_bin];
 
-    if (HASH_MATCH(hte, hash, key))
+    do
     {
-        return hte->value;
-    }
-
-    // if not equal, start linear search for match
-#if HT_LINEAR == 1
-    size_t bin = (start_bin + 1) & ht->mask;
-#else
-    size_t bin = (5 * start_bin + 1) & ht->mask;
-#endif
-
-    while (bin != start_bin)
-    {
-        HT_SEARCH_COLLIDE(ht);
-        hte = &ht->table[bin];
-
         if (HASH_MATCH(hte, hash, key))
         {
             return hte->value;
         }
+
+        HT_SEARCH_COLLIDE(ht);
 
 #if HT_LINEAR == 1
         bin = (bin + 1) & ht->mask;
 #else
         bin = (5 * bin + 1) & ht->mask;
 #endif
+        hte = &ht->table[bin];
 
-    }
+    } while (bin != start_bin);
 
     // if not found, fail
     return NULL;
@@ -244,33 +233,11 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 
     // check for free entry based on hash
     size_t start_bin = hash & mask;
-
+    size_t bin = start_bin;
     HashTable_Entry* hte = &table[start_bin];
 
-    // if entry unused, fill it and return success
-    if (HASH_EMPTY(hte))
+    do
     {
-        hte->hash = hash;
-        hte->key = key;
-        hte->value = value;
-        return HT_OK;
-    }
-
-    // otherwise start linear search for open bin
-#if HT_LINEAR == 1
-    size_t bin = (start_bin + 1) & mask;
-#else
-    size_t bin = (5 * start_bin + 1) & mask;
-#endif
-
-    while (bin != start_bin)
-    {
-        // mark collisions
-        HT_INSERT_COLLIDE(ht);
-        HT_RECENT_INSERT_COLLIDE(ht);
-
-        hte = &table[bin];
-
         // if entry is a match, update the value
         if (HASH_MATCH(hte, hash, key))
         {
@@ -287,12 +254,19 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
             return HT_OK;
         }
 
+        // mark collisions
+        HT_INSERT_COLLIDE(ht);
+        HT_RECENT_INSERT_COLLIDE(ht);
+
 #if HT_LINEAR == 1
         bin = (bin + 1) & mask;
 #else
         bin = (5 * bin + 1) & mask;
 #endif
-    }
+
+        hte = &table[bin];
+
+    } while (bin != start_bin);
 
     // if no free slot found, then fail
     return HT_FAIL;
