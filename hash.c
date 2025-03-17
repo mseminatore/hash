@@ -209,10 +209,12 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 
         HT_SEARCH_COLLIDE(ht);
 
+        perturb >>= HT_PERTURB;
+
 #if HT_LINEAR == 1
-        bin = (bin + 1) & ht->mask;
+        bin = (bin + perturb + 1) & ht->mask;
 #else
-        bin = (5 * bin + 1) & ht->mask;
+        bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
         hte = &ht->table[bin];
 
@@ -227,6 +229,8 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
+    size_t perturb = hash;
+
     CHECK_THAT(ht && table);
 
     size_t mask = size - 1;
@@ -258,10 +262,12 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
         HT_INSERT_COLLIDE(ht);
         HT_RECENT_INSERT_COLLIDE(ht);
 
+        perturb >>= HT_PERTURB;
+
 #if HT_LINEAR == 1
-        bin = (bin + 1) & mask;
+        bin = (bin + perturb + 1) & mask;
 #else
-        bin = (5 * bin + 1) & mask;
+        bin = (5 * bin + perturb + 1) & mask;
 #endif
 
         hte = &table[bin];
