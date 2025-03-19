@@ -6,11 +6,11 @@
 #include "hash.h"
 
 // configuration defines
-#define HT_AUTO_GROW 1
-#define HT_DEBUG_STATS 1
-#define HT_MAX_FREE 16
-#define HT_LINEAR 0
-#define HT_PERTURB  1
+#define HT_AUTO_GROW    1
+#define HT_DEBUG_STATS  1
+#define HT_MAX_FREE     16
+#define HT_LINEAR       0   // use linear probing
+#define HT_PERTURB      1   // randomize probes
 
 // helper macros
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
