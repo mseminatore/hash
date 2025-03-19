@@ -21,20 +21,20 @@
     #define HT_DEFAULT_SIZE 8
 #endif
 
-#ifndef HT_LOAD_FACTOR
-    #define HT_LOAD_FACTOR 0.67f
-#endif
-
-#ifndef HT_PERTURB
-    #define HT_PERTURB 5
+#ifndef HT_PERTURB_VALUE
+    #define HT_PERTURB_VALUE 5
 #endif
 
 //--------------------------------------
-// 
+// define hash, key and value types
 //--------------------------------------
 typedef intptr_t ht_hash_t;
 typedef void* ht_key_t;
 typedef void* ht_value_t;
+
+// hash and comparison functions
+typedef ht_hash_t (*ht_hash_func)(const char *key);
+typedef int (*ht_compare_func)(ht_key_t a, ht_key_t b);
 
 //--------------------------------------
 // table entry structure
@@ -55,6 +55,9 @@ typedef struct HashTable
     size_t mask;
     size_t size;
     size_t entries;
+    ht_hash_func hash_fn;
+    ht_compare_func compare_fn;
+
 #if HT_TRACK_STATS == 1
     size_t insert_collisions;
     size_t search_collisions;

@@ -10,6 +10,7 @@
 #define HT_DEBUG_STATS 1
 #define HT_MAX_FREE 16
 #define HT_LINEAR 0
+#define HT_PERTURB  0
 
 // helper macros
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
@@ -191,7 +192,7 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 //--------------------------------------
 ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 {
-    size_t perturb = hash;
+    size_t perturb = HT_PERTURB ? hash : 0;
 
     CHECK_THAT(ht && ht->table);
 
@@ -209,7 +210,7 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 
         HT_SEARCH_COLLIDE(ht);
 
-        perturb >>= HT_PERTURB;
+        perturb >>= HT_PERTURB_VALUE;
 
 #if HT_LINEAR == 1
         bin = (bin + perturb + 1) & ht->mask;
@@ -229,26 +230,19 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
-    size_t perturb = hash;
+    size_t perturb = HT_PERTURB ? hash : 0;
 
     CHECK_THAT(ht && table);
 
     size_t mask = size - 1;
 
     // check for free entry based on hash
-    size_t start_bin = hash & mask;
+    size_t start_bin = (size_t)hash & mask;
     size_t bin = start_bin;
     HashTable_Entry* hte = &table[start_bin];
 
     do
     {
-        // if entry is a match, update the value
-        if (HASH_MATCH(hte, hash, key))
-        {
-            hte->value = value;
-            return HT_OK;
-        }
-
         // if entry unused, fill it and return success
         if (HASH_EMPTY(hte))
         {
@@ -258,11 +252,18 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
             return HT_OK;
         }
 
+        // if entry is a match, update the value
+        if (HASH_MATCH(hte, hash, key))
+        {
+            hte->value = value;
+            return HT_OK;
+        }
+
         // mark collisions
         HT_INSERT_COLLIDE(ht);
         HT_RECENT_INSERT_COLLIDE(ht);
 
-        perturb >>= HT_PERTURB;
+        perturb >>= HT_PERTURB_VALUE;
 
 #if HT_LINEAR == 1
         bin = (bin + perturb + 1) & mask;
