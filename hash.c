@@ -10,7 +10,7 @@
 #define HT_DEBUG_STATS 1
 #define HT_MAX_FREE 16
 #define HT_LINEAR 0
-#define HT_PERTURB  0
+#define HT_PERTURB  1
 
 // helper macros
 #define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
@@ -192,9 +192,15 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 //--------------------------------------
 ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 {
-    size_t perturb = HT_PERTURB ? hash : 0;
+#if HT_PERTURB == 1
+    size_t perturb = hash;
+#else
+    size_t perturb = 0;
+#endif
 
     CHECK_THAT(ht && ht->table);
+
+    int done = 0;
 
     // look at entry based on hash
     size_t start_bin = hash & ht->mask;
@@ -219,7 +225,10 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 #endif
         hte = &ht->table[bin];
 
-    } while (bin != start_bin);
+#if HT_PERTURB != 1
+        done = bin == start_bin;
+#endif
+    } while (!done);
 
     // if not found, fail
     return NULL;
@@ -230,11 +239,16 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
-    size_t perturb = HT_PERTURB ? hash : 0;
+#if HT_PERTURB == 1
+    size_t perturb = hash;
+#else
+    size_t perturb = 0;
+#endif
 
     CHECK_THAT(ht && table);
 
     size_t mask = size - 1;
+    int done = 0;
 
     // check for free entry based on hash
     size_t start_bin = (size_t)hash & mask;
@@ -273,7 +287,10 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 
         hte = &table[bin];
 
-    } while (bin != start_bin);
+#if HT_PERTURB != 1
+        done = bin == start_bin;
+#endif
+    } while (!done);
 
     // if no free slot found, then fail
     return HT_FAIL;
