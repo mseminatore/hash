@@ -80,6 +80,8 @@ HashTable *ht_shrink(HashTable *ht);
 int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue);
 void ht_finished();
 int ht_remove(HashTable* ht, ht_key_t key);
+int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn);
+int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn);
 
 void ht_stats(HashTable* ht);
 void ht_debug_stats();

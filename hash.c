@@ -13,7 +13,7 @@
 #define HT_PERTURB      1   // randomize probes
 
 // helper macros
-#define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && (hte)->key == key)
+#define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && ht->compare_fn((hte)->key, key))
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
 
 #ifdef _DEBUG
@@ -50,6 +50,49 @@ static int ht_free_count = 0;
 #endif
 
 //--------------------------------------
+// default comparison is equality
+//--------------------------------------
+static int default_compare_fn(ht_key_t a, ht_key_t b)
+{
+    return a == b;
+}
+
+//--------------------------------------
+// default hash is MurmurOAAT32
+//--------------------------------------
+static ht_hash_t default_hash_fn(const char* key)
+{
+	ht_hash_t h = 3323198485ul;
+	for (; *key; ++key)
+	{
+		h ^= *key;
+		h *= 0x5bd1e995;
+		h ^= h >> 15;
+	}
+	return h;
+}
+
+//--------------------------------------
+// attempt to set hash function
+//--------------------------------------
+int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn)
+{
+	CHECK_THAT(ht);
+	ht->hash_fn = hash_fn;
+    return HT_OK;
+}
+
+//--------------------------------------
+// attempt to set compare function
+//--------------------------------------
+int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn)
+{
+	CHECK_THAT(ht);
+	ht->compare_fn = compare_fn;
+    return HT_OK;
+}
+
+//--------------------------------------
 // initialize hash table
 //--------------------------------------
 HashTable *ht_create()
@@ -83,10 +126,13 @@ HashTable *ht_create()
     ht->size = HT_DEFAULT_SIZE;
     ht->mask = ht->size - 1;
     ht->table = ht->small_table;
+    ht->compare_fn = default_compare_fn;
+    ht->hash_fn = default_hash_fn;
 
     // zero table mem
     size_t table_size = sizeof(HashTable_Entry) * ht->size;
     memset(ht->table, 0, table_size);
+
     return ht;
 }
 

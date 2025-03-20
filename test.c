@@ -19,7 +19,7 @@ char *avalue = "bar";
 //--------------------------------------
 // MurmurOAAT32
 //--------------------------------------
-static uint32_t hash(const char* key)
+static ht_hash_t hash(const char* key)
 {
     uint32_t h = 3323198485ul;
     for (; *key; ++key) 
@@ -29,6 +29,14 @@ static uint32_t hash(const char* key)
         h ^= h >> 15;
     }
     return h;
+}
+
+//--------------------------------------
+// case sensistive string compare
+//--------------------------------------
+static int compare(ht_key_t a, ht_key_t b)
+{
+	return strcmp((char*)a, (char*)b) == 0;
 }
 
 //--------------------------------------
@@ -50,6 +58,16 @@ void test_create()
     TEST(ht->search_collisions == 0);
     TEST(ht->recent_insert_collisions == 0);
 #endif
+}
+
+//--------------------------------------
+// test hash and compare function setting
+//--------------------------------------
+void test_set_funcs()
+{
+	SUITE("Set Funcs");
+	TEST(ht_set_hash_func(ht, hash) == HT_OK);
+	TEST(ht_set_compare_func(ht, compare) == HT_OK);
 }
 
 //--------------------------------------
@@ -194,6 +212,7 @@ void test_main(int argc, char *argv[])
 
     test_create();
     test_size();
+    test_set_funcs();
     test_insert();
     test_find();
     test_iterate();
