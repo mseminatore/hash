@@ -58,7 +58,7 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 }
 
 //--------------------------------------
-// default hash is MurmurOAAT32
+// default hash is the key
 //--------------------------------------
 static ht_hash_t default_hash_fn(const char* key)
 {
@@ -239,9 +239,11 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 //--------------------------------------
 // try to find an entry in the table
 //--------------------------------------
-ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
+ht_value_t ht_find(HashTable *ht, ht_key_t key)
 {
     CHECK_THAT(ht && ht->table);
+
+    ht_hash_t hash = ht->hash_fn((const char*)key);
 
 #if HT_PERTURB == 1
     size_t perturb = hash;
@@ -352,9 +354,10 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 //--------------------------------------
 // insert an entry
 //--------------------------------------
-int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
+int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value)
 {
     CHECK_THAT(ht && ht->table);
+	CHECK_THAT(key && value);
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
@@ -367,7 +370,7 @@ int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value)
         }
     }
 #endif
-
+	ht_hash_t hash = ht->hash_fn((const char*)key);
     int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size);
     if (result == HT_OK)
         ht->entries++;
@@ -387,7 +390,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
     for (size_t i = 0; i < ht->size; i++)
     {
         // if found, mark entry as empty
-        if (hte->key == key)
+        if (hte->key && ht->compare_fn(hte->key, key))
         {
             hte->hash = 0;
             hte->key = 0;

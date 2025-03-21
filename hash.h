@@ -71,8 +71,8 @@ typedef struct HashTable
 //--------------------------------------
 HashTable *ht_create();
 int ht_free(HashTable *ht);
-ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key);
-int ht_insert(HashTable *ht, ht_hash_t hash, ht_key_t key, ht_value_t value);
+ht_value_t ht_find(HashTable *ht, ht_key_t key);
+int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);

@@ -67,7 +67,11 @@ void test_set_funcs()
 {
 	SUITE("Set Funcs");
 	TEST(ht_set_hash_func(ht, hash) == HT_OK);
+	TEST(ht->hash_fn != NULL);
+	TEST(ht->hash_fn == hash);
 	TEST(ht_set_compare_func(ht, compare) == HT_OK);
+	TEST(ht->compare_fn != NULL);
+	TEST(ht->compare_fn == compare);
 }
 
 //--------------------------------------
@@ -107,7 +111,7 @@ void test_insert()
 
     for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
-        TEST(HT_OK == ht_insert(ht, (ht_hash_t)hash(keys[i]), keys[i], keys[i]));
+        TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
     }
 
     print_table();
@@ -130,7 +134,7 @@ void test_find()
 
     for (int i = 0; i < ARRAY_SIZE(keys); i++)
     {
-        TEST(ht_find(ht, (ht_hash_t)hash(keys[i]), keys[i]));
+        TEST(ht_find(ht, keys[i]));
     }
 }
 
@@ -191,13 +195,16 @@ void test_big_words()
 	}
 
     ht = ht_create();
+    ht_set_hash_func(ht, hash);
+	ht_set_compare_func(ht, compare);
+
     char word[256];
     while(fgets(word, sizeof(word), fp))
 	{
 		char *p = strchr(word, '\n');
 		if (p) *p = 0;
         char *pword = strdup(word);
-		assert(HT_OK == ht_insert(ht, (ht_hash_t)hash(word), pword, pword));
+		assert(HT_OK == ht_insert(ht, pword, pword));
 	}
 
     fclose(fp);
