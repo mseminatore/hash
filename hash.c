@@ -62,14 +62,17 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 //--------------------------------------
 static ht_hash_t default_hash_fn(const char* key)
 {
-	ht_hash_t h = 3323198485ul;
-	for (; *key; ++key)
-	{
-		h ^= *key;
-		h *= 0x5bd1e995;
-		h ^= h >> 15;
-	}
-	return h;
+    return (ht_hash_t)key;
+
+    //ht_hash_t h = 3323198485ul;
+
+    //for (; *key; ++key)
+    //{
+	   // h ^= *key;
+	   // h *= 0x5bd1e995;
+	   // h ^= h >> 15;
+    //}
+    //return h;
 }
 
 //--------------------------------------
@@ -238,13 +241,13 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 //--------------------------------------
 ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 {
+    CHECK_THAT(ht && ht->table);
+
 #if HT_PERTURB == 1
     size_t perturb = hash;
 #else
     size_t perturb = 0;
 #endif
-
-    CHECK_THAT(ht && ht->table);
 
     int done = 0;
 
@@ -285,13 +288,17 @@ ht_value_t ht_find(HashTable *ht, ht_hash_t hash, ht_key_t key)
 //--------------------------------------
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
 {
+    CHECK_THAT(ht && table);
+    CHECK_THAT(key && value);
+
+    // check that size is power of 2
+    CHECK_THAT(size && !(size & (size - 1)));
+
 #if HT_PERTURB == 1
     size_t perturb = hash;
 #else
     size_t perturb = 0;
 #endif
-
-    CHECK_THAT(ht && table);
 
     size_t mask = size - 1;
     int done = 0;
