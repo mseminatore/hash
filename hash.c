@@ -81,7 +81,12 @@ static ht_hash_t default_hash_fn(const char* key)
 int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn)
 {
 	CHECK_THAT(ht);
-	ht->hash_fn = hash_fn;
+
+    if (hash_fn == NULL)
+        ht->hash_fn = default_hash_fn;
+    else
+    	ht->hash_fn = hash_fn;
+
     return HT_OK;
 }
 
@@ -91,7 +96,12 @@ int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn)
 int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn)
 {
 	CHECK_THAT(ht);
-	ht->compare_fn = compare_fn;
+
+    if (compare_fn == NULL)
+        ht->compare_fn = default_compare_fn;
+    else
+        ht->compare_fn = compare_fn;
+    
     return HT_OK;
 }
 
@@ -126,7 +136,7 @@ HashTable *ht_create()
 #endif
 
     ht->entries = 0;
-    ht->size = HT_DEFAULT_SIZE;
+    ht->size = HT_DEFAULT_TABLE_SIZE;
     ht->mask = ht->size - 1;
     ht->table = ht->small_table;
     ht->compare_fn = default_compare_fn;

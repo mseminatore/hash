@@ -52,6 +52,9 @@ void test_create()
     TEST(ht != NULL);
     TEST(ht->table != NULL);
     TEST(ht->entries == 0);
+    TEST(ht->size == HT_DEFAULT_TABLE_SIZE);
+    TEST(ht->compare_fn != NULL);
+    TEST(ht->hash_fn != NULL);
 
 #if HT_TRACK_STATS == 1
     TEST(ht->insert_collisions == 0);
@@ -81,7 +84,7 @@ void test_size()
 {
     SUITE("Size");
 
-    TEST(ht_capacity(ht) == HT_DEFAULT_SIZE);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
     TESTEX("empty table size is 0", ht_size(ht) == 0);
 }
 
@@ -114,7 +117,7 @@ void test_insert()
         TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
     }
 
-    print_table();
+    //print_table();
 
     ht_stats(ht);
 

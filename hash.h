@@ -17,8 +17,8 @@
     #define HT_FREE free
 #endif
 
-#ifndef HT_DEFAULT_SIZE
-    #define HT_DEFAULT_SIZE 8
+#ifndef HT_DEFAULT_TABLE_SIZE
+    #define HT_DEFAULT_TABLE_SIZE 8
 #endif
 
 #ifndef HT_PERTURB_VALUE
@@ -63,7 +63,7 @@ typedef struct HashTable
     size_t search_collisions;
     size_t recent_insert_collisions;
 #endif
-    HashTable_Entry small_table[HT_DEFAULT_SIZE];
+    HashTable_Entry small_table[HT_DEFAULT_TABLE_SIZE];
 } HashTable;
 
 //--------------------------------------
