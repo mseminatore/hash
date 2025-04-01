@@ -6,6 +6,9 @@
 #define HT_OK   1
 #define HT_FAIL 0
 
+#define HT_HASH_NULL    0
+#define HT_HASH_STRING  1
+
 // configuration
 #define HT_TRACK_STATS 1
 

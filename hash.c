@@ -63,16 +63,23 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 static ht_hash_t default_hash_fn(const char* key)
 {
     return (ht_hash_t)key;
+}
 
-    //ht_hash_t h = 3323198485ul;
+//--------------------------------------
+// default string hash function
+// MurmurOAAT32
+//--------------------------------------
+static ht_hash_t string_hash_fn(const char* key)
+{
+    ht_hash_t h = 3323198485ul;
 
-    //for (; *key; ++key)
-    //{
-	   // h ^= *key;
-	   // h *= 0x5bd1e995;
-	   // h ^= h >> 15;
-    //}
-    //return h;
+    for (; *key; ++key)
+    {
+        h ^= *key;
+        h *= 0x5bd1e995;
+        h ^= h >> 15;
+    }
+    return h;
 }
 
 //--------------------------------------
@@ -82,10 +89,12 @@ int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn)
 {
 	CHECK_THAT(ht);
 
-    if (hash_fn == NULL)
+    if (hash_fn == HT_HASH_NULL)
         ht->hash_fn = default_hash_fn;
+    else if (hash_fn == HT_HASH_STRING)
+        ht->hash_fn = string_hash_fn;
     else
-    	ht->hash_fn = hash_fn;
+        ht->hash_fn = hash_fn;
 
     return HT_OK;
 }
@@ -456,6 +465,8 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     for (size_t i = 0; i < ht->size; i++)
     {
         hte = &ht->table[i];
+
+        // if entry is not empty, re-insert into new table
         if (!HASH_EMPTY(hte))
         {
             if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size))

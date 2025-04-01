@@ -21,7 +21,7 @@ char *avalue = "bar";
 //--------------------------------------
 static ht_hash_t hash(const char* key)
 {
-    uint32_t h = 3323198485ul;
+    ht_hash_t h = 3323198485ul;
     for (; *key; ++key) 
     {
         h ^= *key;
@@ -198,7 +198,7 @@ void test_big_words()
 	}
 
     ht = ht_create();
-    ht_set_hash_func(ht, hash);
+    ht_set_hash_func(ht, HT_HASH_STRING);
 	ht_set_compare_func(ht, compare);
 
     char word[256];
