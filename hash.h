@@ -1,13 +1,17 @@
 #ifndef __HASH_H
 #define __HASH_H
 
+#ifdef __cplusplus
+    extern "C" {
+#endif
+
 #include <stdint.h>
 
 #define HT_OK   1
 #define HT_FAIL 0
 
-#define HT_HASH_NULL    0
-#define HT_HASH_STRING  1
+#define HT_HASH_NULL    (ht_hash_func)0
+#define HT_HASH_STRING  (ht_hash_func)1
 
 // configuration
 #define HT_TRACK_STATS 1
@@ -88,5 +92,9 @@ int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn);
 
 void ht_stats(HashTable* ht);
 void ht_debug_stats();
+
+#ifdef __cplusplus
+    }
+#endif
 
 #endif // __HASH_H
