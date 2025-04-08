@@ -117,6 +117,9 @@ void test_insert()
         TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
     }
 
+    TEST(HT_FAIL == ht_insert(ht, keys[0], keys[0]));
+	TEST(HT_OK == ht_add(ht, keys[0], keys[0]));
+
     //print_table();
 
     ht_stats(ht);

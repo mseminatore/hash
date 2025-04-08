@@ -7,8 +7,9 @@
 
 #include <stdint.h>
 
-#define HT_OK   1
 #define HT_FAIL 0
+#define HT_OK   1
+#define HT_UPDATED 2
 
 #define HT_HASH_NULL    (ht_hash_func)0
 #define HT_HASH_STRING  (ht_hash_func)1
@@ -80,6 +81,7 @@ HashTable *ht_create();
 int ht_free(HashTable *ht);
 ht_value_t ht_find(HashTable *ht, ht_key_t key);
 int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value);
+int ht_add(HashTable* ht, ht_key_t key, ht_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);

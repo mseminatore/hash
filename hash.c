@@ -5,6 +5,9 @@
 
 #include "hash.h"
 
+#define HT_ADD_ONLY 0
+#define HT_REPLACE  1
+
 // configuration defines
 #define HT_AUTO_GROW    1
 #define HT_DEBUG_STATS  1
@@ -307,7 +310,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 //--------------------------------------
 // internal insert
 //--------------------------------------
-static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size)
+static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size, int replace)
 {
     CHECK_THAT(ht && table);
     CHECK_THAT(key && value);
@@ -343,6 +346,10 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
         // if entry is a match, update the value
         if (HASH_MATCH(hte, hash, key))
         {
+			// if replace is not set, then fail
+            if (!replace)
+                return HT_FAIL;
+
             hte->value = value;
             return HT_OK;
         }
@@ -371,12 +378,12 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 }
 
 //--------------------------------------
-// insert an entry
+// attempt to add or update an entry
 //--------------------------------------
-int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value)
+static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int replace)
 {
     CHECK_THAT(ht && ht->table);
-	CHECK_THAT(key && value);
+    CHECK_THAT(key && value);
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
@@ -389,12 +396,29 @@ int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value)
         }
     }
 #endif
-	ht_hash_t hash = ht->hash_fn((const char*)key);
-    int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size);
-    if (result == HT_OK)
+
+    ht_hash_t hash = ht->hash_fn((const char*)key);
+    int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size, replace);
+    if (result == HT_OK || (replace == HT_REPLACE && result == HT_UPDATED))
         ht->entries++;
 
     return result;
+}
+
+//----------------------------------------
+// insert an entry, fail if already exists
+//----------------------------------------
+int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value)
+{
+	return ht_add_or_update(ht, key, value, HT_ADD_ONLY);
+}
+
+//--------------------------------------------------
+// attempt to add an entry, update if already exists
+//--------------------------------------------------
+int ht_add(HashTable* ht, ht_key_t key, ht_value_t value)
+{
+	return ht_add_or_update(ht, key, value, HT_REPLACE);
 }
 
 //--------------------------------------
@@ -469,7 +493,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
         // if entry is not empty, re-insert into new table
         if (!HASH_EMPTY(hte))
         {
-            if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size))
+            if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size, HT_ADD_ONLY))
             {
                 HT_FREE(new_table);
                 HT_FREE_INC;
