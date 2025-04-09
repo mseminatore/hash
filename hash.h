@@ -9,7 +9,6 @@
 
 #define HT_FAIL 0
 #define HT_OK   1
-#define HT_UPDATED 2
 
 #define HT_HASH_NULL    (ht_hash_func)0
 #define HT_HASH_STRING  (ht_hash_func)1

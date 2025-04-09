@@ -117,8 +117,11 @@ void test_insert()
         TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
     }
 
+    // inserting duplicate should fail
     TEST(HT_FAIL == ht_insert(ht, keys[0], keys[0]));
-	TEST(HT_OK == ht_add(ht, keys[0], keys[0]));
+
+	// add or update existing item should succeed
+    TEST(HT_OK == ht_add(ht, keys[0], keys[0]));
 
     //print_table();
 

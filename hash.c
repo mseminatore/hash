@@ -9,9 +9,9 @@
 #define HT_REPLACE  1
 
 // configuration defines
-#define HT_AUTO_GROW    1
-#define HT_DEBUG_STATS  1
-#define HT_MAX_FREE     16
+#define HT_AUTO_GROW    1   // automatically grow table
+#define HT_DEBUG_STATS  1   // track alloc/free stats
+#define HT_MAX_FREE     16  // size of free list
 #define HT_LINEAR       0   // use linear probing
 #define HT_PERTURB      1   // randomize probes
 
@@ -20,9 +20,9 @@
 #define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
 
 #ifdef _DEBUG
-#define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
+#   define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
 #else
-#define CHECK_THAT(cond)            if (!(cond)) return 0;
+#   define CHECK_THAT(cond)            if (!(cond)) return 0;
 #endif
 
 // maintain a free list of already alloc'd tables
@@ -43,9 +43,9 @@ static int ht_free_count = 0;
 #endif
 
 #if HT_TRACK_STATS == 1
-    #define HT_INSERT_COLLIDE(ht)       (ht)->insert_collisions++;
-    #define HT_SEARCH_COLLIDE(ht)       (ht)->search_collisions++;
-    #define HT_RECENT_INSERT_COLLIDE(ht) (ht)->recent_insert_collisions++;
+    #define HT_INSERT_COLLIDE(ht)           (ht)->insert_collisions++;
+    #define HT_SEARCH_COLLIDE(ht)           (ht)->search_collisions++;
+    #define HT_RECENT_INSERT_COLLIDE(ht)    (ht)->recent_insert_collisions++;
 #else
     #define HT_INSERT_COLLIDE(ht)
     #define HT_SEARCH_COLLIDE(ht)
@@ -340,6 +340,11 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
             hte->hash = hash;
             hte->key = key;
             hte->value = value;
+
+            // if we are not re-hashing increment entries
+            if(ht->table == table)
+                ht->entries++;
+
             return HT_OK;
         }
 
@@ -399,9 +404,6 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
 
     ht_hash_t hash = ht->hash_fn((const char*)key);
     int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size, replace);
-    if (result == HT_OK || (replace == HT_REPLACE && result == HT_UPDATED))
-        ht->entries++;
-
     return result;
 }
 
@@ -490,7 +492,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     {
         hte = &ht->table[i];
 
-        // if entry is not empty, re-insert into new table
+        // if entry is not empty, re-hash into new table
         if (!HASH_EMPTY(hte))
         {
             if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size, HT_ADD_ONLY))
