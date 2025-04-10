@@ -187,6 +187,7 @@ void test_destroy()
     TEST(ht->table != NULL);
 
     TEST(HT_OK == ht_free(ht));
+    ht = NULL; // Ensure ht is reset
 }
 
 //--------------------------------------

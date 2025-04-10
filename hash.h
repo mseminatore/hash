@@ -6,6 +6,7 @@
 #endif
 
 #include <stdint.h>
+#include <stdlib.h>
 
 #define HT_FAIL 0
 #define HT_OK   1
