@@ -57,6 +57,9 @@ static int ht_free_count = 0;
 //--------------------------------------
 static int default_compare_fn(ht_key_t a, ht_key_t b)
 {
+    CHECK_THAT(a && b);
+
+    // check for equality
     return a == b;
 }
 
@@ -65,6 +68,10 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 //--------------------------------------
 static ht_hash_t default_hash_fn(const char* key)
 {
+    CHECK_THAT(key);
+    // hash is the key
+    // this is a bad hash function, but it works for testing
+    // and is fast
     return (ht_hash_t)key;
 }
 
@@ -264,6 +271,11 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
 ht_value_t ht_find(HashTable *ht, ht_key_t key)
 {
     CHECK_THAT(ht && ht->table);
+    CHECK_THAT(key);
+
+    // check for empty table
+    if (ht->entries == 0)
+        return NULL;
 
     ht_hash_t hash = ht->hash_fn((const char*)key);
 
