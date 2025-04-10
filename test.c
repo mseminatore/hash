@@ -195,6 +195,7 @@ void test_destroy()
 void test_big_words()
 {
     SUITE("Big Words");
+    int count = 0;
 
     FILE *fp = fopen(DIR_PREFIX"words_alpha.txt", "r");
     if (fp == NULL)
@@ -214,8 +215,11 @@ void test_big_words()
 		if (p) *p = 0;
         char *pword = strdup(word);
 		assert(HT_OK == ht_insert(ht, pword, pword));
+        count++;
 	}
 
+    TEST(count == ht_size(ht));
+    
     fclose(fp);
 }
 
