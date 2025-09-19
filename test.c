@@ -19,12 +19,13 @@ char *avalue = "bar";
 //--------------------------------------
 // MurmurOAAT32
 //--------------------------------------
-static ht_hash_t hash(const char* key)
+static ht_hash_t hash(const void *key)
 {
+    const unsigned char *s = (const unsigned char*)key;
     ht_hash_t h = 3323198485ul;
-    for (; *key; ++key) 
+    for (; *s; ++s)
     {
-        h ^= *key;
+        h ^= *s;
         h *= 0x5bd1e995;
         h ^= h >> 15;
     }
@@ -34,9 +35,9 @@ static ht_hash_t hash(const char* key)
 //--------------------------------------
 // case sensistive string compare
 //--------------------------------------
-static int compare(ht_key_t a, ht_key_t b)
+static int compare(const void *a, const void *b)
 {
-	return strcmp((char*)a, (char*)b) == 0;
+    return strcmp((const char*)a, (const char*)b) == 0;
 }
 
 //--------------------------------------
@@ -198,12 +199,28 @@ void test_big_words()
     SUITE("Big Words");
     int count = 0;
 
-    FILE *fp = fopen(DIR_PREFIX"words_alpha.txt", "r");
+    // try several locations for the wordlist to be robust to working directory
+    const char *candidates[] = {
+        DIR_PREFIX"words_alpha.txt",
+        "words_alpha.txt",
+        "..\\words_alpha.txt",
+        "../words_alpha.txt",
+        NULL
+    };
+
+    FILE *fp = NULL;
+    for (int i = 0; candidates[i] != NULL; ++i)
+    {
+        fp = fopen(candidates[i], "r");
+        if (fp != NULL)
+            break;
+    }
+
     if (fp == NULL)
-	{
-		perror("fopen");
-		return;
-	}
+    {
+        perror("fopen");
+        return;
+    }
 
     ht = ht_create();
     ht_set_hash_func(ht, HT_HASH_STRING);

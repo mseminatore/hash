@@ -66,12 +66,11 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 //--------------------------------------
 // default hash is the key
 //--------------------------------------
-static ht_hash_t default_hash_fn(const char* key)
+static ht_hash_t default_hash_fn(ht_key_t key)
 {
     CHECK_THAT(key);
-    // hash is the key
-    // this is a bad hash function, but it works for testing
-    // and is fast
+    // hash is the key pointer value
+    // this is a bad hash function for most uses, but it is fast
     return (ht_hash_t)key;
 }
 
@@ -79,13 +78,14 @@ static ht_hash_t default_hash_fn(const char* key)
 // default string hash function
 // MurmurOAAT32
 //--------------------------------------
-static ht_hash_t string_hash_fn(const char* key)
+static ht_hash_t string_hash_fn(ht_key_t key)
 {
+    const unsigned char *s = (const unsigned char*)key;
     ht_hash_t h = 3323198485ul;
 
-    for (; *key; ++key)
+    for (; *s; ++s)
     {
-        h ^= *key;
+        h ^= *s;
         h *= 0x5bd1e995;
         h ^= h >> 15;
     }
@@ -277,7 +277,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     if (ht->entries == 0)
         return NULL;
 
-    ht_hash_t hash = ht->hash_fn((const char*)key);
+    ht_hash_t hash = ht->hash_fn(key);
 
 #if HT_PERTURB == 1
     size_t perturb = hash;
@@ -414,7 +414,7 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
     }
 #endif
 
-    ht_hash_t hash = ht->hash_fn((const char*)key);
+    ht_hash_t hash = ht->hash_fn(key);
     int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size, replace);
     return result;
 }
@@ -447,7 +447,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
     for (size_t i = 0; i < ht->size; i++)
     {
         // if found, mark entry as empty
-        if (hte->key && ht->compare_fn(hte->key, key))
+    if (hte->key && ht->compare_fn(hte->key, key))
         {
             hte->hash = 0;
             hte->key = 0;

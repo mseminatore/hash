@@ -13,9 +13,12 @@ include_directories(${PROJECT_SOURCE_DIR}/testy)
 
 # add the library
 add_library(ht STATIC hash.c)
+# Suppress MSVC deprecation warnings for standard C functions like fopen
+target_compile_definitions(ht PRIVATE _CRT_SECURE_NO_WARNINGS)
 
 # add the executable
 add_executable(ht_test test.c ${CMAKE_SOURCE_DIR}/testy/test_main.c)
 target_link_libraries(ht_test ht)
+target_compile_definitions(ht_test PRIVATE _CRT_SECURE_NO_WARNINGS)
 
 #target_compile_options(hashtable PRIVATE -std=c++11) 

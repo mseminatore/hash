@@ -37,11 +37,11 @@
 // define hash, key and value types
 //--------------------------------------
 typedef intptr_t ht_hash_t;
-typedef void* ht_key_t;
-typedef void* ht_value_t;
+typedef const void* ht_key_t;
+typedef const void* ht_value_t;
 
 // hash and comparison functions
-typedef ht_hash_t (*ht_hash_func)(const char *key);
+typedef ht_hash_t (*ht_hash_func)(ht_key_t key);
 typedef int (*ht_compare_func)(ht_key_t a, ht_key_t b);
 
 //--------------------------------------

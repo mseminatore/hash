@@ -4,11 +4,11 @@ This document describes the hash table implementation in this repository (files:
 
 ### Overview
 
-This project implements a compact open-addressing hash table in C. Keys and values are stored as opaque pointers (`ht_key_t`, `ht_value_t`). The table uses a small, embedded `small_table` on the `HashTable` struct as the initial storage and will allocate a separate backing array if the table grows.
+This project implements a compact open-addressing hash table in C. Keys and values are stored as opaque pointers (`ht_key_t`, `ht_value_t`) which are defined as `const void *` in the public header. The table uses a small, embedded `small_table` on the `HashTable` struct as the initial storage and will allocate a separate backing array if the table grows.
 
 Key points:
 - Open addressing probing with a perturb variable used to influence subsequent probe indices.
-- Default hash function treats the key pointer as the hash; a string hash function (MurmurOAAT32-like) is provided for string keys.
+- Default hash function treats the key pointer value as the hash; a string hash function (MurmurOAAT32-like) is provided for string keys. The built-in string hasher expects the key to be a pointer to a NUL-terminated C string and reads it as `const unsigned char *`.
 - User-provided hash and compare functions are supported.
 - Automatic growth occurs when load factor reaches ~0.5 (2 * entries >= size). Shrink is supported but conservative.
 - The library does not free user-provided keys/values; ownership remains with the caller.
@@ -59,8 +59,8 @@ Key points:
 
 ### Data shapes and ownership
 
-- `HashTable_Entry` holds an integer `hash`, and pointer `key` and `value`.
-- The library stores pointers only. It does not allocate or free keys/values except when the caller passes dynamically allocated pointers — the table only stores those pointers. Callers must manage the lifetime of objects referenced by keys and values.
+- `HashTable_Entry` holds an integer `hash`, and pointer `key` and `value` (both `ht_key_t`/`ht_value_t` are `const void *`).
+- The library stores pointers only. It does not allocate or free keys/values — it only stores the pointers you provide. Callers must manage the lifetime (allocation/freeing) of objects referenced by keys and values.
 
 ### Configuration and compile-time options
 
@@ -113,7 +113,9 @@ Replace generator/paths as appropriate for your environment.
    - `ht_remove` marks a slot as completely empty (zeros hash, key and value). In many open-addressing implementations deleting an entry requires placing a tombstone marker rather than reverting to an empty slot to preserve probe chains; otherwise some items that hashed to earlier bins might become unreachable depending on probing strategy. The current implementation performs full-cycle probe scans for lookups (it does not stop on empty slots), which mitigates some problems, but this is fragile and non-standard. Consider switching to an explicit tombstone marker or a rehash-on-delete strategy.
 
 2. Key / hash function contract
-   - The `ht_hash_func` signature expects `const char *key`, which implies string keys, but the table type for keys is `void*`. The default hash uses pointer value as the hash. This mismatch can lead to confusion. Either change the typedef to accept `ht_key_t`/`const void*` or document and enforce that keys are NUL-terminated C strings when using string hashers.
+  - The `ht_hash_func` and `ht_compare_func` signatures accept `ht_key_t` (i.e. `const void *`) and the public typedefs were updated to use `ht_key_t`. This unifies the API so hash/compare functions take the same key type stored in the table.
+  - The default hash function uses the key pointer value as the hash (address-based). The default compare function tests pointer equality.
+  - Use `HT_HASH_STRING` or supply a hash function that treats `ht_key_t` as a pointer to a NUL-terminated C string when string hashing is desired. When storing string keys you should also set an appropriate compare function (for example, one that calls `strcmp`).
 
 3. `ht_remove` uses a full table scan checking `hte->key && ht->compare_fn(hte->key, key)` which ignores the stored `hash`. This is correct but linear-time O(capacity) instead of being proportional to probe length — it's slower for large empty tables.
 
@@ -132,7 +134,7 @@ Replace generator/paths as appropriate for your environment.
    - Implement tombstone markers or shift-rehashing for deletion to ensure correctness and expected performance.
 
 2. Clarify and unify hash/compare types
-   - Make `ht_hash_func` accept `const void*` (or `ht_key_t`) and document accepted key formats. Provide two built-in hashers: pointer-hash and string-hash with clear documentation.
+  - The project has updated the typedefs so `ht_hash_func` and `ht_compare_func` accept `ht_key_t` (`const void *`). Keep documentation and examples up-to-date to show both pointer-hash and string-hash usage (and remember to set a string compare when using `HT_HASH_STRING`).
 
 3. Stronger unit tests
    - Add unit tests for edge cases: remove in the middle of probe chains, re-insert after delete, concurrent rehash behavior, and large-load performance.
