@@ -36,6 +36,10 @@
 //--------------------------------------
 // define hash, key and value types
 //--------------------------------------
+// Note: keys and values are stored as opaque pointers. Keys/values are
+// declared as `const void *` to indicate the table does not modify them.
+// When using the built-in string hasher (`HT_HASH_STRING`) the key must be
+// a pointer to a NUL-terminated C string (i.e. `const char *`).
 typedef intptr_t ht_hash_t;
 typedef const void* ht_key_t;
 typedef const void* ht_value_t;

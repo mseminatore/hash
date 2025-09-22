@@ -77,6 +77,9 @@ static ht_hash_t default_hash_fn(ht_key_t key)
 //--------------------------------------
 // default string hash function
 // MurmurOAAT32
+// Note: the string hasher expects the key to be a pointer to a NUL-terminated
+// C string (ht_key_t which is typedef'd to const void* in the header). It reads
+// the bytes as unsigned characters.
 //--------------------------------------
 static ht_hash_t string_hash_fn(ht_key_t key)
 {
