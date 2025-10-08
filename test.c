@@ -16,14 +16,16 @@ char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy",
 char *akey = "foo";
 char *avalue = "bar";
 
+//--------------------------------------
 // Special hash function for testing tombstones
+//--------------------------------------
 static ht_hash_t colliding_hash(const void* key)
 {
     return 1;  // Force all keys to same hash bucket
 }
 
 //--------------------------------------
-// MurmurOAAT32
+// Test probe chain integrity with tombstones
 //--------------------------------------
 static void test_tombstone_reuse(void)
 {
@@ -69,6 +71,9 @@ static void test_tombstone_reuse(void)
     ht_free(ht);
 }
 
+//--------------------------------------
+// hash used for testing
+//--------------------------------------
 static ht_hash_t hash(const void *key)
 {
     const unsigned char *s = (const unsigned char*)key;
@@ -240,11 +245,6 @@ void test_destroy()
     TEST(HT_OK == ht_free(ht));
     ht = NULL; // Ensure ht is reset
 }
-
-//--------------------------------------
-// Test probe chain integrity with tombstones
-//--------------------------------------
-void test_tombstone_reuse();
 
 //--------------------------------------
 //

@@ -16,8 +16,8 @@
 #define HT_PERTURB      1   // randomize probes
 
 // helper macros
-#define HASH_MATCH(hte, hash, key)  ((hte)->hash == hash && ht->compare_fn((hte)->key, key))
-#define HASH_EMPTY(hte)             ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0)
+#define HASH_MATCH(hte, hash, key)  (!(hte)->tombstone && (hte)->hash == hash && ht->compare_fn((hte)->key, key))
+#define HASH_EMPTY(hte)             ((hte)->tombstone || ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0))
 
 #ifdef _DEBUG
 #   define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
@@ -313,9 +313,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 #endif
         hte = &ht->table[bin];
 
-#if HT_PERTURB != 1
         done = bin == start_bin;
-#endif
     } while (!done);
 
     // if not found, fail
@@ -355,6 +353,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
             hte->hash = hash;
             hte->key = key;
             hte->value = value;
+			hte->tombstone = 0;
 
             // if we are not re-hashing increment entries
             if(ht->table == table)
@@ -388,9 +387,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 
         hte = &table[bin];
 
-#if HT_PERTURB != 1
         done = bin == start_bin;
-#endif
     } while (!done);
 
     // if no free slot found, then fail
@@ -408,7 +405,7 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
     // load factor of 0.5 to 0.67 is good time to grow
-    if (2 * ht->entries >= ht->size)
+    if (HT_INV_LOAD_FACTOR * ht->entries >= ht->size)
     {
         if (!ht_grow(ht))
         {
@@ -418,6 +415,7 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
 #endif
 
     ht_hash_t hash = ht->hash_fn(key);
+
     int result = ht_insert_nocheck(ht, ht->table, hash, key, value, ht->size, replace);
     return result;
 }
@@ -450,9 +448,12 @@ int ht_remove(HashTable* ht, ht_key_t key)
     for (size_t i = 0; i < ht->size; i++)
     {
         // if found, mark entry as empty
-    if (hte->key && ht->compare_fn(hte->key, key))
+        if (hte->key && ht->compare_fn(hte->key, key))
         {
+			assert(hte->tombstone == 0);
+
             hte->hash = 0;
+			hte->tombstone = 1;
             hte->key = 0;
             hte->value = 0;
             ht->entries--;
