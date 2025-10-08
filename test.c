@@ -125,6 +125,7 @@ void test_create()
 void test_set_funcs()
 {
 	SUITE("Set Funcs");
+
 	TEST(ht_set_hash_func(ht, hash) == HT_OK);
 	TEST(ht->hash_fn != NULL);
 	TEST(ht->hash_fn == hash);
