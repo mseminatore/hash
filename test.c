@@ -16,9 +16,59 @@ char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy",
 char *akey = "foo";
 char *avalue = "bar";
 
+// Special hash function for testing tombstones
+static ht_hash_t colliding_hash(const void* key)
+{
+    return 1;  // Force all keys to same hash bucket
+}
+
 //--------------------------------------
 // MurmurOAAT32
 //--------------------------------------
+static void test_tombstone_reuse(void)
+{
+    SUITE("Tombstone Reuse");
+
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    // Force hash collisions for this test
+    ht_set_hash_func(ht, colliding_hash);
+
+    // Insert three items that will collide
+    const char* keyA = "A";
+    const char* keyB = "B";
+    const char* keyC = "C";
+    const char* keyD = "D";
+
+    TEST(HT_OK == ht_insert(ht, keyA, keyA));
+    TEST(HT_OK == ht_insert(ht, keyB, keyB));
+    TEST(HT_OK == ht_insert(ht, keyC, keyC));
+
+    // Verify all items are findable
+    TEST(ht_find(ht, keyA) == keyA);
+    TEST(ht_find(ht, keyB) == keyB);
+    TEST(ht_find(ht, keyC) == keyC);
+
+    // Remove B, leaving a tombstone
+    TEST(HT_OK == ht_remove(ht, keyB));
+
+    // Verify A and C are still findable
+    TEST(ht_find(ht, keyA) == keyA);
+    TEST(ht_find(ht, keyB) == NULL);
+    TEST(ht_find(ht, keyC) == keyC);
+
+    // Insert D which should reuse B's tombstone
+    TEST(HT_OK == ht_insert(ht, keyD, keyD));
+
+    // Verify all items are still findable
+    TEST(ht_find(ht, keyA) == keyA);
+    TEST(ht_find(ht, keyC) == keyC);
+    TEST(ht_find(ht, keyD) == keyD);
+
+    ht_free(ht);
+}
+
 static ht_hash_t hash(const void *key)
 {
     const unsigned char *s = (const unsigned char*)key;
@@ -192,6 +242,11 @@ void test_destroy()
 }
 
 //--------------------------------------
+// Test probe chain integrity with tombstones
+//--------------------------------------
+void test_tombstone_reuse();
+
+//--------------------------------------
 //
 //--------------------------------------
 void test_big_words()
@@ -255,6 +310,7 @@ void test_main(int argc, char *argv[])
     test_find();
     test_iterate();
     test_remove();
+    test_tombstone_reuse();
     ht_stats(ht);
     test_destroy();
 
