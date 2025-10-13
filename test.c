@@ -289,6 +289,8 @@ void test_big_words()
 		if (p) *p = 0;
         char *pword = strdup(word);
 		assert(HT_OK == ht_insert(ht, pword, pword));
+        assert(ht_find(ht, pword));
+
         count++;
 	}
 
