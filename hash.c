@@ -450,6 +450,54 @@ int ht_remove(HashTable* ht, ht_key_t key)
 {
     CHECK_THAT(ht && ht->table);
 
+    // check for empty table
+    if (ht->entries == 0)
+        return HT_FAIL;
+
+#if 1
+    ht_hash_t hash = ht->hash_fn(key);
+
+#if HT_PERTURB == 1
+    size_t perturb = hash;
+#else
+    size_t perturb = 0;
+#endif
+
+    int done = 0;
+
+    size_t start_bin = (size_t)hash & ht->mask;
+    size_t bin = start_bin;
+    HashTable_Entry* hte = &ht->table[start_bin];
+
+    do
+    {
+        if (HASH_MATCH(hte, hash, key))
+        {
+            hte->hash = 0;
+            hte->tombstone = 1;
+            hte->key = 0;
+            hte->value = 0;
+            ht->entries--;
+            return HT_OK;
+        }
+        HT_SEARCH_COLLIDE(ht);
+
+        perturb >>= HT_PERTURB_VALUE;
+
+#if HT_LINEAR == 1
+        bin = (bin + perturb + 1) & ht->mask;
+#else
+        bin = (5 * bin + perturb + 1) & ht->mask;
+#endif
+        hte = &ht->table[bin];
+
+//#if HT_PERTURB != 1
+        done = bin == start_bin;
+//#endif
+
+    } while (!done);
+
+#else
     // look for key in table and if found, remove
     HashTable_Entry *hte = ht->table;
     for (size_t i = 0; i < ht->size; i++)
@@ -468,6 +516,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
         }
         hte++;
     }
+#endif
 
     // if not found, return failure
     return HT_FAIL;
