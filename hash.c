@@ -13,7 +13,7 @@
 #define HT_DEBUG_STATS  1   // track alloc/free stats
 #define HT_MAX_FREE     16  // size of free list
 #define HT_LINEAR       0   // use linear probing
-#define HT_PERTURB      1   // randomize probes
+#define HT_PERTURB      0   // randomize probes
 
 // helper macros
 #define HASH_MATCH(hte, hash, key)  (!(hte)->tombstone && (hte)->hash == hash && ht->compare_fn((hte)->key, key))
@@ -291,7 +291,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     int done = 0;
 
     // look at entry based on hash
-    size_t start_bin = hash & ht->mask;
+    size_t start_bin = (size_t)hash & ht->mask;
     size_t bin = start_bin;
     HashTable_Entry* hte = &ht->table[start_bin];
 
@@ -313,7 +313,9 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 #endif
         hte = &ht->table[bin];
 
+#if HT_PERTURB != 1
         done = bin == start_bin;
+#endif
     } while (!done);
 
     // if not found, fail
@@ -367,7 +369,10 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
         {
 			// if replace is not set, then fail
             if (!replace)
+            {
+                puts("ht_insert_nocheck: key already exists");
                 return HT_FAIL;
+            }
 
             hte->value = value;
             return HT_OK;
@@ -386,11 +391,13 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 #endif
 
         hte = &table[bin];
-
+#if HT_PERTURB != 1
         done = bin == start_bin;
+#endif
     } while (!done);
 
     // if no free slot found, then fail
+    puts("ht_insert_nocheck: no free slot found");
     return HT_FAIL;
 }
 

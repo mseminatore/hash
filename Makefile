@@ -1,8 +1,7 @@
 ARCH = $(shell uname -m)
 TARGET = ht_test
 OBJS = hash.o
-DEPS = hash.h
-CFLAGS += -g -O2 #-DNDEBUG
+CFLAGS += -g -O2 #-D_DEBUG #-DNDEBUG
 LIBNAME = libht.a
 LFLAGS += -L. -lht #-lm
 
