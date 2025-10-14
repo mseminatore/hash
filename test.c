@@ -231,6 +231,8 @@ void test_remove()
     {
         TEST(HT_OK == ht_remove(ht, keys[i]));
     }
+
+	TEST(ht_size(ht) == 0);
 }
 
 //--------------------------------------
