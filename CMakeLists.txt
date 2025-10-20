@@ -17,8 +17,9 @@ add_library(ht STATIC hash.c)
 target_compile_definitions(ht PRIVATE _CRT_SECURE_NO_WARNINGS)
 
 # add the executable
-add_executable(ht_test test.c ${CMAKE_SOURCE_DIR}/testy/test_main.c)
-target_link_libraries(ht_test ht)
+add_executable(ht_test test.c)
+add_subdirectory(${PROJECT_SOURCE_DIR}/testy EXCLUDE_FROM_ALL)
+target_link_libraries(ht_test PRIVATE ht testy)
 target_compile_definitions(ht_test PRIVATE _CRT_SECURE_NO_WARNINGS)
 
 #target_compile_options(hashtable PRIVATE -std=c++11) 
