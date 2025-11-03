@@ -328,7 +328,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t hash, ht_key_t key, ht_value_t value, size_t size, int replace)
 {
     CHECK_THAT(ht && table);
-    CHECK_THAT(key && value);
+    CHECK_THAT(key);
 
     // check that size is power of 2
     CHECK_THAT(size && !(size & (size - 1)));
@@ -407,7 +407,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int replace)
 {
     CHECK_THAT(ht && ht->table);
-    CHECK_THAT(key && value);
+    CHECK_THAT(key);
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
