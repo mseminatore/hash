@@ -1,4 +1,7 @@
 # hash
+[![CMake](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml)
+![GitHub License](https://img.shields.io/github/license/mseminatore/hash)
+
 hash table in C
 
 Notes
