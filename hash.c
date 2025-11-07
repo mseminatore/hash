@@ -370,7 +370,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 			// if replace is not set, then fail
             if (!replace)
             {
-                puts("ht_insert_nocheck: key already exists");
+                // puts("ht_insert_nocheck: key already exists");
                 return HT_FAIL;
             }
 
