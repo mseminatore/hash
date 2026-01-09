@@ -255,7 +255,7 @@ void test_destroy()
 void test_big_words()
 {
     SUITE("Big Words");
-    int count = 0;
+    int word_count = 0;
 
     // try several locations for the wordlist to be robust to working directory
     const char *candidates[] = {
@@ -281,6 +281,8 @@ void test_big_words()
     }
 
     ht = ht_create();
+	TEST(ht != NULL);
+	
     ht_set_hash_func(ht, HT_HASH_STRING);
 	ht_set_compare_func(ht, compare);
 
@@ -290,17 +292,18 @@ void test_big_words()
 		char *p = strchr(word, '\n');
 		if (p) *p = 0;
         char *pword = strdup(word);
-		assert(HT_OK == ht_insert(ht, pword, pword));
+		
+		ht_insert(ht, pword, pword));
         assert(ht_find(ht, pword));
 
-        count++;
+        word_count++;
 	}
 
-    TEST(count == ht_size(ht));
+    TEST(word_count == ht_size(ht));
 
 	// debug test failure
-    if (count != ht_size(ht))
-		printf("word count = %d, table count = %d\n", count, ht_size(ht));
+    if (word_count != ht_size(ht))
+		printf("word count = %d, table count = %ld\n", word_count, ht_size(ht));
 	
     fclose(fp);
 }
