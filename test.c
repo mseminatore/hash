@@ -297,7 +297,11 @@ void test_big_words()
 	}
 
     TEST(count == ht_size(ht));
-    
+
+	// debug test failure
+    if (count != ht_size(ht))
+		printf("word count = %d, table count = %d\n", count, ht_size(ht));
+	
     fclose(fp);
 }
 
