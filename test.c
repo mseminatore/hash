@@ -293,7 +293,7 @@ void test_big_words()
 		if (p) *p = 0;
         char *pword = strdup(word);
 		
-		ht_insert(ht, pword, pword));
+		ht_insert(ht, pword, pword);
         assert(ht_find(ht, pword));
 
         word_count++;
