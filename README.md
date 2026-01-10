@@ -1,8 +1,8 @@
-# hash
+# hash (libht)
 [![CMake](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml)
 ![GitHub License](https://img.shields.io/github/license/mseminatore/hash)
 
-hash table in C
+This library offers an open-addressing hash table in C. My prior experience in implementing hash tables used closed-addressing so I wanted to bring my hands-on experience up to date.
 
 Notes
 -----
