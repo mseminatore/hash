@@ -303,7 +303,7 @@ void test_big_words()
 
 	// debug test failure
     if (word_count != ht_size(ht))
-		printf("word count = %d, table count = %ld\n", word_count, ht_size(ht));
+		printf("word count = %d, table count = %zd\n", word_count, ht_size(ht));
 	
     fclose(fp);
 }
