@@ -5,7 +5,7 @@ project(hashtable VERSION 1.0 LANGUAGES C)
 
 # testing
 enable_testing()
-add_test(NAME ht_test COMMAND ht_test)
+add_test(NAME ht_test COMMAND ht_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
 # add the includes
 include_directories(${PROJECT_SOURCE_DIR})
