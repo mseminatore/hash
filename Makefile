@@ -20,5 +20,5 @@ test: ht_test
 	./ht_test
 
 clean:
-	rm $(TARGET) $(OBJS) $(LIBNAME) test.o
+	rm -f $(TARGET) $(OBJS) $(LIBNAME) test.o
 
