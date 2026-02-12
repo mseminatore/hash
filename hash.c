@@ -13,7 +13,7 @@
 #define HT_DEBUG_STATS  1   // track alloc/free stats
 #define HT_MAX_FREE     16  // size of free list
 #define HT_LINEAR       0   // use linear probing
-#define HT_PERTURB      0   // randomize probes
+#define HT_PERTURB      1   // randomize probes
 
 // tombstone marker: a unique address that can never be a valid user key
 static const char ht_tombstone_sentinel = 0;

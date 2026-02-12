@@ -75,7 +75,7 @@ Key points:
 - `HT_TRACK_STATS` — collect per-table collision stats.
 - `HT_DEBUG_STATS` — collect allocator statistics.
 - `HT_ALLOC` / `HT_FREE` — macros to replace allocation/free functions.
-- `HT_AUTO_GROW` / `HT_LINEAR` / `HT_PERTURB` — tuning options in `hash.c`.
+- `HT_AUTO_GROW` / `HT_LINEAR` / `HT_PERTURB` — tuning options in `hash.c`. `HT_PERTURB` enables CPython-style perturbed probing (recommended; reduces clustering).
 
 ### Probing and resizing behavior
 
