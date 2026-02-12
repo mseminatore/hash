@@ -58,7 +58,6 @@ typedef int (*ht_compare_func)(ht_key_t a, ht_key_t b);
 typedef struct HashTable_Entry
 {
     ht_hash_t hash;
-    int tombstone;
     ht_key_t key;
     ht_value_t value;
 } HashTable_Entry;
@@ -89,6 +88,8 @@ typedef struct HashTable
 HashTable *ht_create();
 int ht_free(HashTable *ht);
 ht_value_t ht_find(HashTable *ht, ht_key_t key);
+int ht_contains(HashTable *ht, ht_key_t key);
+int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value);
 int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value);
 int ht_add(HashTable* ht, ht_key_t key, ht_value_t value);
 size_t ht_size(HashTable *ht);

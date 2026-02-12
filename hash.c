@@ -15,9 +15,15 @@
 #define HT_LINEAR       0   // use linear probing
 #define HT_PERTURB      0   // randomize probes
 
+// tombstone marker: a unique address that can never be a valid user key
+static const char ht_tombstone_sentinel = 0;
+#define HT_TOMBSTONE ((ht_key_t)&ht_tombstone_sentinel)
+
 // helper macros
-#define HASH_MATCH(hte, hash, key)  (!(hte)->tombstone && (hte)->hash == hash && ht->compare_fn((hte)->key, key))
-#define HASH_EMPTY(hte)             ((hte)->tombstone || ((hte)->hash == 0 && (hte)->key == 0 && (hte)->value == 0))
+#define HASH_MATCH(hte, hash, key)  ((hte)->key && (hte)->key != HT_TOMBSTONE && (hte)->hash == hash && ht->compare_fn((hte)->key, key))
+#define HASH_EMPTY(hte)             ((hte)->key == NULL)
+#define HASH_DELETED(hte)           ((hte)->key == HT_TOMBSTONE)
+#define HASH_USABLE(hte)            (HASH_EMPTY(hte) || HASH_DELETED(hte))
 
 #ifdef _DEBUG
 #   define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
@@ -242,8 +248,8 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
     if (index < 0 || index > ht->size)
         return HT_FAIL;
 
-    // find next table entry
-    while (index < ht->size && HASH_EMPTY(&ht->table[index]))
+    // find next live table entry (skip empty slots and tombstones)
+    while (index < ht->size && (HASH_EMPTY(&ht->table[index]) || HASH_DELETED(&ht->table[index])))
     {
         index++;
     }
@@ -276,7 +282,6 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     CHECK_THAT(ht && ht->table);
     CHECK_THAT(key);
 
-    // check for empty table
     if (ht->entries == 0)
         return NULL;
 
@@ -288,22 +293,20 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     size_t perturb = 0;
 #endif
 
-    int done = 0;
-
-    // look at entry based on hash
     size_t start_bin = (size_t)hash & ht->mask;
     size_t bin = start_bin;
-    HashTable_Entry* hte = &ht->table[start_bin];
+    HashTable_Entry* hte = &ht->table[bin];
 
-    do
+    for (;;)
     {
+        if (HASH_EMPTY(hte))
+            return NULL;
+
         if (HASH_MATCH(hte, hash, key))
-        {
             return hte->value;
-        }
 
+        // skip tombstones — they don't terminate the probe chain
         HT_SEARCH_COLLIDE(ht);
-
         perturb >>= HT_PERTURB_VALUE;
 
 #if HT_LINEAR == 1
@@ -311,15 +314,104 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
+        if (bin == start_bin)
+            return NULL;
         hte = &ht->table[bin];
+    }
+}
 
-//#if HT_PERTURB != 1
-        done = bin == start_bin;
-//#endif
-    } while (!done);
+//--------------------------------------
+// check if a key exists in the table
+//--------------------------------------
+int ht_contains(HashTable *ht, ht_key_t key)
+{
+    CHECK_THAT(ht && ht->table);
+    CHECK_THAT(key);
 
-    // if not found, fail
-    return NULL;
+    if (ht->entries == 0)
+        return HT_FAIL;
+
+    ht_hash_t hash = ht->hash_fn(key);
+
+#if HT_PERTURB == 1
+    size_t perturb = hash;
+#else
+    size_t perturb = 0;
+#endif
+
+    size_t start_bin = (size_t)hash & ht->mask;
+    size_t bin = start_bin;
+    HashTable_Entry* hte = &ht->table[bin];
+
+    for (;;)
+    {
+        if (HASH_EMPTY(hte))
+            return HT_FAIL;
+
+        if (HASH_MATCH(hte, hash, key))
+            return HT_OK;
+
+        HT_SEARCH_COLLIDE(ht);
+        perturb >>= HT_PERTURB_VALUE;
+
+#if HT_LINEAR == 1
+        bin = (bin + perturb + 1) & ht->mask;
+#else
+        bin = (5 * bin + perturb + 1) & ht->mask;
+#endif
+        if (bin == start_bin)
+            return HT_FAIL;
+        hte = &ht->table[bin];
+    }
+}
+
+//--------------------------------------
+// lookup a key, distinguishing not-found from NULL values
+//--------------------------------------
+int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value)
+{
+    CHECK_THAT(ht && ht->table);
+    CHECK_THAT(key);
+
+    if (ht->entries == 0)
+        return HT_FAIL;
+
+    ht_hash_t hash = ht->hash_fn(key);
+
+#if HT_PERTURB == 1
+    size_t perturb = hash;
+#else
+    size_t perturb = 0;
+#endif
+
+    size_t start_bin = (size_t)hash & ht->mask;
+    size_t bin = start_bin;
+    HashTable_Entry* hte = &ht->table[bin];
+
+    for (;;)
+    {
+        if (HASH_EMPTY(hte))
+            return HT_FAIL;
+
+        if (HASH_MATCH(hte, hash, key))
+        {
+            if (out_value)
+                *out_value = hte->value;
+            return HT_OK;
+        }
+
+        HT_SEARCH_COLLIDE(ht);
+        perturb >>= HT_PERTURB_VALUE;
+
+#if HT_LINEAR == 1
+        bin = (bin + perturb + 1) & ht->mask;
+#else
+        bin = (5 * bin + perturb + 1) & ht->mask;
+#endif
+        if (bin == start_bin)
+            return HT_FAIL;
+        hte = &ht->table[bin];
+    }
 }
 
 //--------------------------------------
@@ -329,8 +421,6 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 {
     CHECK_THAT(ht && table);
     CHECK_THAT(key);
-
-    // check that size is power of 2
     CHECK_THAT(size && !(size & (size - 1)));
 
 #if HT_PERTURB == 1
@@ -340,45 +430,47 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 #endif
 
     size_t mask = size - 1;
-    int done = 0;
-
-    // check for free entry based on hash
     size_t start_bin = (size_t)hash & mask;
     size_t bin = start_bin;
-    HashTable_Entry* hte = &table[start_bin];
+    HashTable_Entry* hte = &table[bin];
 
-    do
+    // track first tombstone for reuse
+    HashTable_Entry* first_tombstone = NULL;
+
+    for (;;)
     {
-        // if entry unused, fill it and return success
         if (HASH_EMPTY(hte))
         {
+            // prefer reusing a tombstone slot if we found one
+            if (first_tombstone)
+                hte = first_tombstone;
+
             hte->hash = hash;
             hte->key = key;
             hte->value = value;
-			hte->tombstone = 0;
 
-            // if we are not re-hashing increment entries
             if(ht->table == table)
                 ht->entries++;
 
             return HT_OK;
         }
 
-        // if entry is a match, update the value
-        if (HASH_MATCH(hte, hash, key))
+        if (HASH_DELETED(hte))
         {
-			// if replace is not set, then fail
+            // remember first tombstone for reuse, but keep probing
+            // to check for duplicates
+            if (!first_tombstone)
+                first_tombstone = hte;
+        }
+        else if (HASH_MATCH(hte, hash, key))
+        {
             if (!replace)
-            {
-                // puts("ht_insert_nocheck: key already exists");
                 return HT_FAIL;
-            }
 
             hte->value = value;
             return HT_OK;
         }
 
-        // mark collisions
         HT_INSERT_COLLIDE(ht);
         HT_RECENT_INSERT_COLLIDE(ht);
 
@@ -389,16 +481,25 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 #else
         bin = (5 * bin + perturb + 1) & mask;
 #endif
+        if (bin == start_bin)
+        {
+            // full cycle — use tombstone if available
+            if (first_tombstone)
+            {
+                first_tombstone->hash = hash;
+                first_tombstone->key = key;
+                first_tombstone->value = value;
 
+                if(ht->table == table)
+                    ht->entries++;
+
+                return HT_OK;
+            }
+            puts("ht_insert_nocheck: no free slot found");
+            return HT_FAIL;
+        }
         hte = &table[bin];
-//#if HT_PERTURB != 1
-        done = bin == start_bin;
-//#endif
-    } while (!done);
-
-    // if no free slot found, then fail
-    puts("ht_insert_nocheck: no free slot found");
-    return HT_FAIL;
+    }
 }
 
 //--------------------------------------
@@ -445,16 +546,16 @@ int ht_add(HashTable* ht, ht_key_t key, ht_value_t value)
 
 //--------------------------------------
 // attempt to remove entry from table
+// Marks the slot with a tombstone sentinel to preserve probe chains.
+// Tombstones are cleaned up naturally during resize/rehash.
 //--------------------------------------
 int ht_remove(HashTable* ht, ht_key_t key)
 {
     CHECK_THAT(ht && ht->table);
 
-    // check for empty table
     if (ht->entries == 0)
         return HT_FAIL;
 
-#if 1
     ht_hash_t hash = ht->hash_fn(key);
 
 #if HT_PERTURB == 1
@@ -463,25 +564,25 @@ int ht_remove(HashTable* ht, ht_key_t key)
     size_t perturb = 0;
 #endif
 
-    int done = 0;
-
     size_t start_bin = (size_t)hash & ht->mask;
     size_t bin = start_bin;
-    HashTable_Entry* hte = &ht->table[start_bin];
+    HashTable_Entry* hte = &ht->table[bin];
 
-    do
+    for (;;)
     {
+        if (HASH_EMPTY(hte))
+            return HT_FAIL;
+
         if (HASH_MATCH(hte, hash, key))
         {
             hte->hash = 0;
-            hte->tombstone = 1;
-            hte->key = 0;
+            hte->key = HT_TOMBSTONE;
             hte->value = 0;
             ht->entries--;
             return HT_OK;
         }
-        HT_SEARCH_COLLIDE(ht);
 
+        HT_SEARCH_COLLIDE(ht);
         perturb >>= HT_PERTURB_VALUE;
 
 #if HT_LINEAR == 1
@@ -489,37 +590,10 @@ int ht_remove(HashTable* ht, ht_key_t key)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
+        if (bin == start_bin)
+            return HT_FAIL;
         hte = &ht->table[bin];
-
-//#if HT_PERTURB != 1
-        done = bin == start_bin;
-//#endif
-
-    } while (!done);
-
-#else
-    // look for key in table and if found, remove
-    HashTable_Entry *hte = ht->table;
-    for (size_t i = 0; i < ht->size; i++)
-    {
-        // if found, mark entry as empty
-        if (hte->key && ht->compare_fn(hte->key, key))
-        {
-			assert(hte->tombstone == 0);
-
-            hte->hash = 0;
-			hte->tombstone = 1;
-            hte->key = 0;
-            hte->value = 0;
-            ht->entries--;
-            return HT_OK;
-        }
-        hte++;
     }
-#endif
-
-    // if not found, return failure
-    return HT_FAIL;
 }
 
 //--------------------------------------
@@ -564,8 +638,8 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     {
         hte = &ht->table[i];
 
-        // if entry is not empty, re-hash into new table
-        if (!HASH_EMPTY(hte))
+        // skip empty slots and tombstones — only re-insert live entries
+        if (!HASH_EMPTY(hte) && !HASH_DELETED(hte))
         {
             if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size, HT_ADD_ONLY))
             {

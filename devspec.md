@@ -7,7 +7,7 @@ This document describes the hash table implementation in this repository (files:
 This project implements a compact open-addressing hash table in C. Keys and values are stored as opaque pointers (`ht_key_t`, `ht_value_t`) which are defined as `const void *` in the public header. The table uses a small, embedded `small_table` on the `HashTable` struct as the initial storage and will allocate a separate backing array if the table grows.
 
 Key points:
-- Open addressing probing with a perturb variable used to influence subsequent probe indices.
+- Open addressing with linear probing.
 - Default hash function treats the key pointer value as the hash; a string hash function (MurmurOAAT32-like) is provided for string keys. The built-in string hasher expects the key to be a pointer to a NUL-terminated C string and reads it as `const unsigned char *`.
 - User-provided hash and compare functions are supported.
 - Automatic growth occurs when load factor reaches ~0.5 (2 * entries >= size). Shrink is supported but conservative.
@@ -22,7 +22,13 @@ Key points:
   - Releases internal resources. Does not free keys/values. Adds the `HashTable` struct to an internal free-list for reuse.
 
 - `ht_value_t ht_find(HashTable *ht, ht_key_t key);`
-  - Returns the value associated with `key` or `NULL` if not found.
+  - Returns the value associated with `key` or `NULL` if not found. Note: cannot distinguish a missing key from a key with a `NULL` value; use `ht_contains` or `ht_lookup` for that.
+
+- `int ht_contains(HashTable *ht, ht_key_t key);`
+  - Returns `HT_OK` if `key` exists in the table, `HT_FAIL` otherwise.
+
+- `int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value);`
+  - Returns `HT_OK` if `key` exists and writes the associated value to `*out_value`. Returns `HT_FAIL` if not found. `out_value` may be `NULL` if only existence check is needed.
 
 - `int ht_insert(HashTable *ht, ht_key_t key, ht_value_t value);`
   - Inserts a key/value pair. Fails (returns `HT_FAIL`) if an equivalent key already exists.
@@ -46,7 +52,7 @@ Key points:
   - Iteration helper. Caller sets `*ipos = 0` to start. On success returns `HT_OK` and advances `*ipos`; on end returns `HT_FAIL`.
 
 - `int ht_remove(HashTable* ht, ht_key_t key);`
-  - Removes an entry by clearing the slot (sets hash, key, value to zero). Returns `HT_OK` or `HT_FAIL`.
+  - Removes an entry by marking the slot with a tombstone sentinel to preserve probe chain integrity. Tombstones are reused on insert and cleaned up on resize. Returns `HT_OK` or `HT_FAIL`.
 
 - `int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn);`
   - Set hash function. Special sentinel values: `HT_HASH_NULL` -> default pointer hash, `HT_HASH_STRING` -> built-in string hash.
@@ -73,11 +79,7 @@ Key points:
 
 ### Probing and resizing behavior
 
-- Probing uses a perturb value derived from the hash. If `HT_LINEAR` is enabled, probe increments are linear-based; otherwise the probe uses a multiplicative+perturb formula:
-
-  bin = (5 * bin + perturb + 1) & mask
-
-  and perturb is right-shifted by `HT_PERTURB_VALUE` on each step.
+- Probing uses CPython-style perturbation: `bin = (5 * bin + perturb + 1) & mask`, where perturb is right-shifted by `HT_PERTURB_VALUE` on each step. If `HT_LINEAR` is enabled, falls back to `bin = (bin + perturb + 1) & mask`.
 
 - The table doubles when `2 * entries >= size` (load factor ~0.5).
 
@@ -109,15 +111,15 @@ Replace generator/paths as appropriate for your environment.
 
 ### Known issues and limitations
 
-1. Removal semantics
-   - `ht_remove` marks a slot as completely empty (zeros hash, key and value). In many open-addressing implementations deleting an entry requires placing a tombstone marker rather than reverting to an empty slot to preserve probe chains; otherwise some items that hashed to earlier bins might become unreachable depending on probing strategy. The current implementation performs full-cycle probe scans for lookups (it does not stop on empty slots), which mitigates some problems, but this is fragile and non-standard. Consider switching to an explicit tombstone marker or a rehash-on-delete strategy.
+1. Deletion semantics
+   - `ht_remove` marks the deleted slot with a tombstone sentinel (`HT_TOMBSTONE`) to preserve probe chain continuity. Tombstones are reused during insertion and cleaned up automatically during resize/rehash. No separate struct field is needed — the tombstone is a special key pointer value.
 
 2. Key / hash function contract
   - The `ht_hash_func` and `ht_compare_func` signatures accept `ht_key_t` (i.e. `const void *`) and the public typedefs were updated to use `ht_key_t`. This unifies the API so hash/compare functions take the same key type stored in the table.
   - The default hash function uses the key pointer value as the hash (address-based). The default compare function tests pointer equality.
   - Use `HT_HASH_STRING` or supply a hash function that treats `ht_key_t` as a pointer to a NUL-terminated C string when string hashing is desired. When storing string keys you should also set an appropriate compare function (for example, one that calls `strcmp`).
 
-3. `ht_remove` uses a full table scan checking `hte->key && ht->compare_fn(hte->key, key)` which ignores the stored `hash`. This is correct but linear-time O(capacity) instead of being proportional to probe length — it's slower for large empty tables.
+3. `ht_remove` uses tombstone-based deletion which is O(probe_length) for the find phase. Tombstones are cleaned up during resize, keeping amortized overhead low.
 
 4. Error handling and CHECK_THAT
    - The `CHECK_THAT` macro returns `0` (which maps to `HT_FAIL` for int returns or `NULL` for pointer returns) on invalid inputs in non-debug builds. This can mask errors. Consider returning explicit error codes or asserting in debug only.
@@ -131,7 +133,7 @@ Replace generator/paths as appropriate for your environment.
 ### Suggested improvements (prioritized)
 
 1. Fix deletion semantics
-   - Implement tombstone markers or shift-rehashing for deletion to ensure correctness and expected performance.
+   - Deletion now uses a tombstone sentinel pointer (no extra struct field), matching CPython's approach. Tombstones are reused on insert and cleaned up on resize. ✅ Done.
 
 2. Clarify and unify hash/compare types
   - The project has updated the typedefs so `ht_hash_func` and `ht_compare_func` accept `ht_key_t` (`const void *`). Keep documentation and examples up-to-date to show both pointer-hash and string-hash usage (and remember to set a string compare when using `HT_HASH_STRING`).
@@ -163,7 +165,7 @@ Replace generator/paths as appropriate for your environment.
 
 ### Next steps
 
-- Implement a robust delete (tombstones or shift-rehash).
+- Implement a robust delete (tombstones or shift-rehash). ✅ Done — tombstone sentinel deletion implemented (CPython-style).
 - Update the hash/compare typedefs for clarity and add documentation.
 - Add explicit ownership/free callbacks and unit tests.
 
