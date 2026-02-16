@@ -162,26 +162,31 @@ static void test_perturb_collision(void)
     int nkeys = sizeof(keys) / sizeof(keys[0]);
     int i;
 
-    for (i = 0; i < nkeys; i++)
+    for (i = 0; i < nkeys; i++) {
         TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+    }
 
     TEST(ht_size(ht) == (size_t)nkeys);
 
     // Delete every other key to create tombstones
-    for (i = 0; i < nkeys; i += 2)
+    for (i = 0; i < nkeys; i += 2) {
         TEST(HT_OK == ht_remove(ht, keys[i]));
+    }
 
     // Remaining keys must still be findable
-    for (i = 1; i < nkeys; i += 2)
+    for (i = 1; i < nkeys; i += 2) {
         TEST(ht_find(ht, keys[i]) == keys[i]);
+    }
 
     // Re-insert deleted keys (should reuse tombstone slots)
-    for (i = 0; i < nkeys; i += 2)
+    for (i = 0; i < nkeys; i += 2) {
         TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+    }
 
     // All keys present
-    for (i = 0; i < nkeys; i++)
+    for (i = 0; i < nkeys; i++) {
         TEST(ht_find(ht, keys[i]) == keys[i]);
+    }
 
     TEST(ht_size(ht) == (size_t)nkeys);
 
