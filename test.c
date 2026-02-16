@@ -144,6 +144,51 @@ static void test_null_values(void)
 }
 
 //--------------------------------------
+// Test perturbed probing under heavy collision
+// Verifies that insert/find work when the probe
+// sequence doesn't visit all slots linearly.
+//--------------------------------------
+static void test_perturb_collision(void)
+{
+    SUITE("Perturb Collision");
+
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    // Force all keys to collide on the same bucket
+    ht_set_hash_func(ht, colliding_hash);
+
+    const char* keys[] = {"a","b","c","d","e","f","g"};
+    int nkeys = sizeof(keys) / sizeof(keys[0]);
+    int i;
+
+    for (i = 0; i < nkeys; i++)
+        TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+
+    TEST(ht_size(ht) == (size_t)nkeys);
+
+    // Delete every other key to create tombstones
+    for (i = 0; i < nkeys; i += 2)
+        TEST(HT_OK == ht_remove(ht, keys[i]));
+
+    // Remaining keys must still be findable
+    for (i = 1; i < nkeys; i += 2)
+        TEST(ht_find(ht, keys[i]) == keys[i]);
+
+    // Re-insert deleted keys (should reuse tombstone slots)
+    for (i = 0; i < nkeys; i += 2)
+        TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+
+    // All keys present
+    for (i = 0; i < nkeys; i++)
+        TEST(ht_find(ht, keys[i]) == keys[i]);
+
+    TEST(ht_size(ht) == (size_t)nkeys);
+
+    ht_free(ht);
+}
+
+//--------------------------------------
 // hash used for testing
 //--------------------------------------
 static ht_hash_t hash(const void *key)
@@ -395,6 +440,7 @@ void test_main(int argc, char *argv[])
     test_iterate();
     test_remove();
     test_delete_probe_chain();
+    test_perturb_collision();
     ht_stats(ht);
     test_destroy();
 

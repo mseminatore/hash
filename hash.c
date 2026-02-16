@@ -293,11 +293,10 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     size_t perturb = 0;
 #endif
 
-    size_t start_bin = (size_t)hash & ht->mask;
-    size_t bin = start_bin;
+    size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (;;)
+    for (size_t i = 0; i < ht->size; i++)
     {
         if (HASH_EMPTY(hte))
             return NULL;
@@ -314,10 +313,10 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
-        if (bin == start_bin)
-            return NULL;
         hte = &ht->table[bin];
     }
+
+    return NULL;
 }
 
 //--------------------------------------
@@ -339,11 +338,10 @@ int ht_contains(HashTable *ht, ht_key_t key)
     size_t perturb = 0;
 #endif
 
-    size_t start_bin = (size_t)hash & ht->mask;
-    size_t bin = start_bin;
+    size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (;;)
+    for (size_t i = 0; i < ht->size; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;
@@ -359,10 +357,10 @@ int ht_contains(HashTable *ht, ht_key_t key)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
-        if (bin == start_bin)
-            return HT_FAIL;
         hte = &ht->table[bin];
     }
+
+    return HT_FAIL;
 }
 
 //--------------------------------------
@@ -384,11 +382,10 @@ int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value)
     size_t perturb = 0;
 #endif
 
-    size_t start_bin = (size_t)hash & ht->mask;
-    size_t bin = start_bin;
+    size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (;;)
+    for (size_t i = 0; i < ht->size; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;
@@ -408,10 +405,10 @@ int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
-        if (bin == start_bin)
-            return HT_FAIL;
         hte = &ht->table[bin];
     }
+
+    return HT_FAIL;
 }
 
 //--------------------------------------
@@ -430,14 +427,13 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 #endif
 
     size_t mask = size - 1;
-    size_t start_bin = (size_t)hash & mask;
-    size_t bin = start_bin;
+    size_t bin = (size_t)hash & mask;
     HashTable_Entry* hte = &table[bin];
 
     // track first tombstone for reuse
     HashTable_Entry* first_tombstone = NULL;
 
-    for (;;)
+    for (size_t i = 0; i < size; i++)
     {
         if (HASH_EMPTY(hte))
         {
@@ -481,25 +477,23 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
 #else
         bin = (5 * bin + perturb + 1) & mask;
 #endif
-        if (bin == start_bin)
-        {
-            // full cycle — use tombstone if available
-            if (first_tombstone)
-            {
-                first_tombstone->hash = hash;
-                first_tombstone->key = key;
-                first_tombstone->value = value;
-
-                if(ht->table == table)
-                    ht->entries++;
-
-                return HT_OK;
-            }
-            puts("ht_insert_nocheck: no free slot found");
-            return HT_FAIL;
-        }
         hte = &table[bin];
     }
+
+    // probed all slots — use tombstone if available
+    if (first_tombstone)
+    {
+        first_tombstone->hash = hash;
+        first_tombstone->key = key;
+        first_tombstone->value = value;
+
+        if(ht->table == table)
+            ht->entries++;
+
+        return HT_OK;
+    }
+
+    return HT_FAIL;
 }
 
 //--------------------------------------
@@ -564,11 +558,10 @@ int ht_remove(HashTable* ht, ht_key_t key)
     size_t perturb = 0;
 #endif
 
-    size_t start_bin = (size_t)hash & ht->mask;
-    size_t bin = start_bin;
+    size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (;;)
+    for (size_t i = 0; i < ht->size; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;
@@ -590,10 +583,10 @@ int ht_remove(HashTable* ht, ht_key_t key)
 #else
         bin = (5 * bin + perturb + 1) & ht->mask;
 #endif
-        if (bin == start_bin)
-            return HT_FAIL;
         hte = &ht->table[bin];
     }
+
+    return HT_FAIL;
 }
 
 //--------------------------------------
