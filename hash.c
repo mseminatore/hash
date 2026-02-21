@@ -136,7 +136,7 @@ int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn)
 //--------------------------------------
 // initialize hash table
 //--------------------------------------
-HashTable *ht_create()
+HashTable *ht_create(void)
 {
     HashTable* ht;
     
@@ -224,7 +224,7 @@ int ht_free(HashTable *ht)
 //--------------------------------------
 // cleanup the free list
 //--------------------------------------
-void ht_finished()
+void ht_finished(void)
 {
     while(ht_free_count > 0)
     {
@@ -696,7 +696,7 @@ HashTable* ht_shrink(HashTable* ht)
 //--------------------------------------
 // print some useful debug stats
 //--------------------------------------
-void ht_debug_stats()
+void ht_debug_stats(void)
 {
 #if HT_DEBUG_STATS == 1
     printf("All tables -> allocs: %zu, frees: %zu, resuse: %zu, freelist: %d\n", allocs, frees, resuse, ht_free_count);

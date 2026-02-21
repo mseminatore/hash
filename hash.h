@@ -85,7 +85,7 @@ typedef struct HashTable
 //--------------------------------------
 //
 //--------------------------------------
-HashTable *ht_create();
+HashTable *ht_create(void);
 int ht_free(HashTable *ht);
 ht_value_t ht_find(HashTable *ht, ht_key_t key);
 int ht_contains(HashTable *ht, ht_key_t key);
@@ -97,13 +97,13 @@ size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
 HashTable *ht_shrink(HashTable *ht);
 int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue);
-void ht_finished();
+void ht_finished(void);
 int ht_remove(HashTable* ht, ht_key_t key);
 int ht_set_hash_func(HashTable* ht, ht_hash_func hash_fn);
 int ht_set_compare_func(HashTable* ht, ht_compare_func compare_fn);
 
 void ht_stats(HashTable* ht);
-void ht_debug_stats();
+void ht_debug_stats(void);
 
 #ifdef __cplusplus
     }
