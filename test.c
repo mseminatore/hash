@@ -16,8 +16,11 @@ char* keys[] = {"The", "quick", "brown", "fox", "jumps ", "over", "the", "lazy",
 char *akey = "foo";
 char *avalue = "bar";
 
+// forward declarations for test helpers
+static int compare(const void *a, const void *b);
+
 //--------------------------------------
-// Special hash function for testing tombstones
+// Special hash function for testing collisions
 //--------------------------------------
 static ht_hash_t colliding_hash(const void* key)
 {
@@ -25,11 +28,11 @@ static ht_hash_t colliding_hash(const void* key)
 }
 
 //--------------------------------------
-// Test probe chain integrity with tombstones
+// Test probe chain integrity after deletion
 //--------------------------------------
-static void test_tombstone_reuse(void)
+static void test_delete_probe_chain(void)
 {
-    SUITE("Tombstone Reuse");
+    SUITE("Delete Probe Chain");
 
     HashTable* ht = ht_create();
     TEST(ht != NULL);
@@ -37,7 +40,6 @@ static void test_tombstone_reuse(void)
     // Force hash collisions for this test
     ht_set_hash_func(ht, colliding_hash);
 
-    // Insert three items that will collide
     const char* keyA = "A";
     const char* keyB = "B";
     const char* keyC = "C";
@@ -47,26 +49,146 @@ static void test_tombstone_reuse(void)
     TEST(HT_OK == ht_insert(ht, keyB, keyB));
     TEST(HT_OK == ht_insert(ht, keyC, keyC));
 
-    // Verify all items are findable
     TEST(ht_find(ht, keyA) == keyA);
     TEST(ht_find(ht, keyB) == keyB);
     TEST(ht_find(ht, keyC) == keyC);
 
-    // Remove B, leaving a tombstone
+    // Remove middle of probe chain
     TEST(HT_OK == ht_remove(ht, keyB));
 
-    // Verify A and C are still findable
+    // Backward-shift should keep A and C findable
     TEST(ht_find(ht, keyA) == keyA);
     TEST(ht_find(ht, keyB) == NULL);
     TEST(ht_find(ht, keyC) == keyC);
 
-    // Insert D which should reuse B's tombstone
+    // Insert D into the freed slot
     TEST(HT_OK == ht_insert(ht, keyD, keyD));
 
-    // Verify all items are still findable
     TEST(ht_find(ht, keyA) == keyA);
     TEST(ht_find(ht, keyC) == keyC);
     TEST(ht_find(ht, keyD) == keyD);
+
+    // Remove first element and verify chain integrity
+    TEST(HT_OK == ht_remove(ht, keyA));
+    TEST(ht_find(ht, keyA) == NULL);
+    TEST(ht_find(ht, keyC) == keyC);
+    TEST(ht_find(ht, keyD) == keyD);
+    TEST(ht_size(ht) == 2);
+
+    ht_free(ht);
+}
+
+//--------------------------------------
+// Test ht_contains and ht_lookup
+//--------------------------------------
+static void test_contains_lookup(void)
+{
+    SUITE("Contains/Lookup");
+
+    HashTable* ht = ht_create();
+    ht_set_hash_func(ht, HT_HASH_STRING);
+    ht_set_compare_func(ht, compare);
+
+    const char* key = "hello";
+    const char* val = "world";
+
+    // not found
+    TEST(HT_FAIL == ht_contains(ht, key));
+    ht_value_t out = (ht_value_t)0xDEAD;
+    TEST(HT_FAIL == ht_lookup(ht, key, &out));
+
+    // insert and find
+    TEST(HT_OK == ht_insert(ht, key, val));
+    TEST(HT_OK == ht_contains(ht, key));
+    TEST(HT_OK == ht_lookup(ht, key, &out));
+    TEST(out == val);
+
+    // lookup with NULL out_value is safe
+    TEST(HT_OK == ht_lookup(ht, key, NULL));
+
+    ht_free(ht);
+}
+
+//--------------------------------------
+// Test NULL value support
+//--------------------------------------
+static void test_null_values(void)
+{
+    SUITE("NULL Values");
+
+    HashTable* ht = ht_create();
+    ht_set_hash_func(ht, HT_HASH_STRING);
+    ht_set_compare_func(ht, compare);
+
+    const char* key = "nullval";
+
+    // insert NULL value
+    TEST(HT_OK == ht_insert(ht, key, NULL));
+    TEST(ht_size(ht) == 1);
+
+    // ht_find returns NULL — ambiguous
+    TEST(ht_find(ht, key) == NULL);
+
+    // ht_contains and ht_lookup distinguish it
+    TEST(HT_OK == ht_contains(ht, key));
+    ht_value_t out = (ht_value_t)0xDEAD;
+    TEST(HT_OK == ht_lookup(ht, key, &out));
+    TEST(out == NULL);
+
+    // remove and verify gone
+    TEST(HT_OK == ht_remove(ht, key));
+    TEST(HT_FAIL == ht_contains(ht, key));
+    TEST(ht_size(ht) == 0);
+
+    ht_free(ht);
+}
+
+//--------------------------------------
+// Test perturbed probing under heavy collision
+// Verifies that insert/find work when the probe
+// sequence doesn't visit all slots linearly.
+//--------------------------------------
+static void test_perturb_collision(void)
+{
+    SUITE("Perturb Collision");
+
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    // Force all keys to collide on the same bucket
+    ht_set_hash_func(ht, colliding_hash);
+
+    const char* keys[] = {"a","b","c","d","e","f","g"};
+    int nkeys = sizeof(keys) / sizeof(keys[0]);
+    int i;
+
+    for (i = 0; i < nkeys; i++) {
+        TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+    }
+
+    TEST(ht_size(ht) == (size_t)nkeys);
+
+    // Delete every other key to create tombstones
+    for (i = 0; i < nkeys; i += 2) {
+        TEST(HT_OK == ht_remove(ht, keys[i]));
+    }
+
+    // Remaining keys must still be findable
+    for (i = 1; i < nkeys; i += 2) {
+        TEST(ht_find(ht, keys[i]) == keys[i]);
+    }
+
+    // Re-insert deleted keys (should reuse tombstone slots)
+    for (i = 0; i < nkeys; i += 2) {
+        TEST(HT_OK == ht_insert(ht, keys[i], keys[i]));
+    }
+
+    // All keys present
+    for (i = 0; i < nkeys; i++) {
+        TEST(ht_find(ht, keys[i]) == keys[i]);
+    }
+
+    TEST(ht_size(ht) == (size_t)nkeys);
 
     ht_free(ht);
 }
@@ -322,11 +444,14 @@ void test_main(int argc, char *argv[])
     test_find();
     test_iterate();
     test_remove();
-    test_tombstone_reuse();
+    test_delete_probe_chain();
+    test_perturb_collision();
     ht_stats(ht);
     test_destroy();
 
     ht = NULL;
+    test_contains_lookup();
+    test_null_values();
     test_big_words();
     ht_stats(ht);
     test_destroy();
