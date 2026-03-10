@@ -226,7 +226,7 @@ int ht_free(HashTable *ht)
 //--------------------------------------
 void ht_clear(HashTable *ht)
 {
-    CHECK_THAT(ht && ht->table);
+    if (!ht || !ht->table) return;
 
     /* If table grew beyond small_table, free it and reset to small_table */
     if (ht->table != ht->small_table)
