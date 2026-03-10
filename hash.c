@@ -222,6 +222,33 @@ int ht_free(HashTable *ht)
 }
 
 //--------------------------------------
+// clear all entries (caller must free keys/values)
+//--------------------------------------
+void ht_clear(HashTable *ht)
+{
+    CHECK_THAT(ht && ht->table);
+
+    /* If table grew beyond small_table, free it and reset to small_table */
+    if (ht->table != ht->small_table)
+    {
+        HT_FREE(ht->table);
+        HT_FREE_INC;
+        ht->table = ht->small_table;
+        ht->size = HT_DEFAULT_TABLE_SIZE;
+        ht->mask = ht->size - 1;
+    }
+
+    memset(ht->table, 0, sizeof(HashTable_Entry) * ht->size);
+    ht->entries = 0;
+
+#if HT_TRACK_STATS == 1
+    ht->insert_collisions = 0;
+    ht->search_collisions = 0;
+    ht->recent_insert_collisions = 0;
+#endif
+}
+
+//--------------------------------------
 // cleanup the free list
 //--------------------------------------
 void ht_finished(void)
