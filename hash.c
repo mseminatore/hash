@@ -32,13 +32,24 @@ static const char ht_tombstone_sentinel = 0;
 #endif
 
 // maintain a free list of already alloc'd tables
-static HashTable *ht_free_list[HT_MAX_FREE];
-static int ht_free_count = 0;
+// When HT_THREAD_SAFE, use per-thread free lists to avoid races
+#ifdef HT_THREAD_SAFE
+  #ifdef _MSC_VER
+    #define HT_THREADLOCAL __declspec(thread)
+  #else
+    #define HT_THREADLOCAL __thread
+  #endif
+#else
+  #define HT_THREADLOCAL
+#endif
+
+static HT_THREADLOCAL HashTable *ht_free_list[HT_MAX_FREE];
+static HT_THREADLOCAL int ht_free_count = 0;
 
 #if HT_DEBUG_STATS == 1
-    static size_t allocs = 0;
-    static size_t frees = 0;
-    static size_t resuse = 0;
+    static HT_THREADLOCAL size_t allocs = 0;
+    static HT_THREADLOCAL size_t frees = 0;
+    static HT_THREADLOCAL size_t resuse = 0;
     #define HT_ALLOC_INC allocs++
     #define HT_FREE_INC frees++
     #define HT_RESUSE resuse++
