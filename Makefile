@@ -5,7 +5,7 @@ CFLAGS += -g -O2 #-D_DEBUG #-DNDEBUG
 LIBNAME = libht.a
 LFLAGS += -L. -lht #-lm
 
-all: $(LIBNAME) ht_test
+all: $(LIBNAME) $(TARGET)
 	
 $(LIBNAME): $(OBJS)
 	ar rcs $(LIBNAME) $(OBJS)
@@ -16,8 +16,8 @@ $(LIBNAME): $(OBJS)
 ht_test: $(LIBNAME) ./testy/test_main.o test.o
 	$(CC) -o $@ $^ $(LFLAGS)
 
-test: ht_test
-	./ht_test
+test: $(TARGET)
+	./$(TARGET)
 
 clean:
 	rm -f $(TARGET) $(OBJS) $(LIBNAME) test.o
