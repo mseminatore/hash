@@ -340,6 +340,12 @@ void test_iterate()
     }
 
     TEST(count == ht_size(ht));
+
+    // iteration past the end must fail cleanly
+    index = ht_capacity(ht);
+    TEST(HT_FAIL == ht_next(ht, &index, NULL, NULL));
+    index = (size_t)-1;
+    TEST(HT_FAIL == ht_next(ht, &index, NULL, NULL));
 }
 
 //--------------------------------------

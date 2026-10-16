@@ -30,7 +30,6 @@ Individual tests cannot be run in isolation — `test_main()` in `test.c` runs a
 - **`hash.h` / `hash.c`** — The library. A single-header, single-source open-addressing hash table with CPython-style probing and opaque `const void *` keys and values.
 - **`test.c`** — Test suite using the `testy` framework (git submodule in `testy/`). Uses `MODULE`, `SUITE`, `TEST`, and `TESTEX` macros.
 - **`words_alpha.txt`** — Word list used by the `test_big_words` stress test.
-- **`devspec.md`** — Detailed developer specification with known issues, API docs, and improvement roadmap. Read this before making design changes.
 
 ### How the hash table works
 

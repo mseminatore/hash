@@ -280,10 +280,11 @@ int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue)
     ht_value_t value = NULL;
 
     CHECK_THAT(ht && ht->table);
+    CHECK_THAT(ipos);
 
     // get index and check bounds
     size_t index = *ipos;
-    if (index < 0 || index > ht->size)
+    if (index >= ht->size)
         return HT_FAIL;
 
     // find next live table entry (skip empty slots and tombstones)
