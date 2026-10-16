@@ -39,7 +39,7 @@ The whole library is `hash.h` + `hash.c` (built as static lib `ht`). Plans and k
 
 Keys and values are opaque `const void *`. The table stores pointers only and **never frees keys or values**; callers own that memory (including before `ht_clear`/`ht_free`).
 
-Default hash is pointer identity and default compare is pointer equality. For string keys, set **both** `ht_set_hash_func(ht, HT_HASH_STRING)` and a `strcmp`-based `ht_set_compare_func`. Compare functions return nonzero for equal.
+Default hash mixes the key pointer's address bits (murmur3-style finalizer) and default compare is pointer equality. For string keys, set **both** `ht_set_hash_func(ht, HT_HASH_STRING)` and a `strcmp`-based `ht_set_compare_func`. Compare functions return nonzero for equal.
 
 ## Conventions
 

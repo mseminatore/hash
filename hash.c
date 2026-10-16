@@ -86,14 +86,27 @@ static int default_compare_fn(ht_key_t a, ht_key_t b)
 }
 
 //--------------------------------------
-// default hash is the key
+// default hash is the key pointer, bit-mixed
 //--------------------------------------
 static ht_hash_t default_hash_fn(ht_key_t key)
 {
     CHECK_THAT(key);
-    // hash is the key pointer value
-    // this is a bad hash function for most uses, but it is fast
-    return (ht_hash_t)key;
+    // pointers are aligned and often evenly spaced, so their low bits
+    // cluster under the mask-based bin index. Mix with a murmur3-style
+    // finalizer so every address bit affects the low bits.
+    // (cheaper xor-shift and Fibonacci mixes were tried; both left
+    // collisions for some key strides.)
+    uintptr_t h = (uintptr_t)key;
+#if UINTPTR_MAX > 0xFFFFFFFFu
+    h ^= h >> 33;
+    h *= (uintptr_t)0xff51afd7ed558ccdull;
+    h ^= h >> 33;
+#else
+    h ^= h >> 16;
+    h *= (uintptr_t)0x85ebca6bu;
+    h ^= h >> 16;
+#endif
+    return (ht_hash_t)h;
 }
 
 //--------------------------------------

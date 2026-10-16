@@ -111,7 +111,7 @@ static void bench_words(char** words, size_t n)
 }
 
 //--------------------------------------
-// pointer keys with the default identity hash
+// pointer keys with the default (address) hash
 //--------------------------------------
 static void bench_pointers(void)
 {

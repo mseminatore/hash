@@ -37,6 +37,40 @@ static size_t count_empty(HashTable* ht)
 }
 
 //--------------------------------------
+// Test that the default pointer hash spreads aligned keys
+//--------------------------------------
+static double avg_probes_for_stride(char* base, size_t stride, size_t n)
+{
+    HashTable* ht = ht_create();
+    for (size_t i = 0; i < n; i++)
+        ht_insert(ht, base + i * stride, base);
+
+    ht->search_collisions = 0;
+    for (size_t i = 0; i < n; i++)
+        ht_find(ht, base + i * stride);
+
+    double avg = (double)ht->search_collisions / (double)n;
+    ht_free(ht);
+    return avg;
+}
+
+static void test_pointer_hash_spread(void)
+{
+    SUITE("Pointer Hash Spread");
+
+    enum { N = 4096, MAX_STRIDE = 64 };
+    char* base = malloc(N * MAX_STRIDE);
+    TEST(base != NULL);
+
+    // keys at common alignments should average well under one extra probe
+    TEST(avg_probes_for_stride(base, 4, N) < 0.5);
+    TEST(avg_probes_for_stride(base, 16, N) < 0.5);
+    TEST(avg_probes_for_stride(base, 64, N) < 0.5);
+
+    free(base);
+}
+
+//--------------------------------------
 // Test that remove/insert churn doesn't fill the table with tombstones
 //--------------------------------------
 static void test_tombstone_churn(void)
@@ -504,6 +538,7 @@ void test_main(int argc, char *argv[])
     test_delete_probe_chain();
     test_perturb_collision();
     test_tombstone_churn();
+    test_pointer_hash_spread();
     ht_stats(ht);
     test_destroy();
 
