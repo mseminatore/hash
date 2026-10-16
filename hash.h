@@ -33,8 +33,16 @@
     #define HT_PERTURB_VALUE 5
 #endif
 
-#ifndef HT_INV_LOAD_FACTOR
-    #define HT_INV_LOAD_FACTOR 2
+// grow when (live + tombstone) slots reach NUM/DEN of capacity
+// HT_INV_LOAD_FACTOR is still honored for compatibility (threshold 1/N)
+#ifndef HT_LOAD_FACTOR_NUM
+    #ifdef HT_INV_LOAD_FACTOR
+        #define HT_LOAD_FACTOR_NUM 1
+        #define HT_LOAD_FACTOR_DEN HT_INV_LOAD_FACTOR
+    #else
+        #define HT_LOAD_FACTOR_NUM 1
+        #define HT_LOAD_FACTOR_DEN 2
+    #endif
 #endif
 
 //--------------------------------------
@@ -71,6 +79,7 @@ typedef struct HashTable
     size_t mask;
     size_t size;
     size_t entries;
+    size_t deleted;     // tombstone count, cleared on resize
     ht_hash_func hash_fn;
     ht_compare_func compare_fn;
 

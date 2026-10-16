@@ -25,6 +25,11 @@ static const char ht_tombstone_sentinel = 0;
 #define HASH_DELETED(hte)           ((hte)->key == HT_TOMBSTONE)
 #define HASH_USABLE(hte)            (HASH_EMPTY(hte) || HASH_DELETED(hte))
 
+// true when 'used' slots reach the load factor threshold of 'size'
+#define HT_AT_LOAD_LIMIT(used, size)    ((used) * HT_LOAD_FACTOR_DEN >= (size) * HT_LOAD_FACTOR_NUM)
+
+static HashTable* ht_resize(HashTable* ht, size_t new_size);
+
 #ifdef _DEBUG
 #   define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
 #else
@@ -175,6 +180,7 @@ HashTable *ht_create(void)
 #endif
 
     ht->entries = 0;
+    ht->deleted = 0;
     ht->size = HT_DEFAULT_TABLE_SIZE;
     ht->mask = ht->size - 1;
     ht->table = ht->small_table;
@@ -216,6 +222,7 @@ int ht_free(HashTable *ht)
 #endif
 
     ht->entries = 0;
+    ht->deleted = 0;
     ht->size = 0;
 
     // add to free list
@@ -251,6 +258,7 @@ void ht_clear(HashTable *ht)
 
     memset(ht->table, 0, sizeof(HashTable_Entry) * ht->size);
     ht->entries = 0;
+    ht->deleted = 0;
 
 #if HT_TRACK_STATS == 1
     ht->insert_collisions = 0;
@@ -485,7 +493,11 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
             hte->value = value;
 
             if(ht->table == table)
+            {
                 ht->entries++;
+                if (first_tombstone)
+                    ht->deleted--;
+            }
 
             return HT_OK;
         }
@@ -527,7 +539,10 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
         first_tombstone->value = value;
 
         if(ht->table == table)
+        {
             ht->entries++;
+            ht->deleted--;
+        }
 
         return HT_OK;
     }
@@ -545,10 +560,15 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
 
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
-    // load factor of 0.5 to 0.67 is good time to grow
-    if (HT_INV_LOAD_FACTOR * ht->entries >= ht->size)
+    // tombstones occupy slots and lengthen probe chains, so count them
+    // toward load; if most of the fill is tombstones, rehash in place
+    if (HT_AT_LOAD_LIMIT(ht->entries + ht->deleted, ht->size))
     {
-        if (!ht_grow(ht))
+        // only rehash in place when at least half the fill is tombstones,
+        // so the freed space pays for the O(n) rehash
+        size_t new_size = HT_AT_LOAD_LIMIT(2 * (ht->entries + 1), ht->size) ? ht->size << 1 : ht->size;
+
+        if (!ht_resize(ht, new_size))
         {
             return HT_FAIL;
         }
@@ -611,6 +631,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
             hte->key = HT_TOMBSTONE;
             hte->value = 0;
             ht->entries--;
+            ht->deleted++;
             return HT_OK;
         }
 
@@ -693,6 +714,7 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     ht->table = new_table;
     ht->size = new_size;
     ht->mask = new_size - 1;
+    ht->deleted = 0;
 
     // clear recent collisions
 #if HT_TRACK_STATS == 1
@@ -726,7 +748,7 @@ HashTable* ht_shrink(HashTable* ht)
 	size_t new_size = ht->size >> 1;
 
     // make sure smaller size is large enough
-    if ((ht->entries << 1) > new_size)
+    if (HT_AT_LOAD_LIMIT(ht->entries, new_size))
         return NULL;
 
     return ht_resize(ht, new_size);

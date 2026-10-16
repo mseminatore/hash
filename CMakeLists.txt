@@ -22,4 +22,17 @@ add_subdirectory(${PROJECT_SOURCE_DIR}/testy)
 target_link_libraries(ht_test PRIVATE ht testy)
 target_compile_definitions(ht_test PRIVATE _CRT_SECURE_NO_WARNINGS)
 
+# load factor benchmarks, one executable per threshold (not built by default)
+#   cmake --build build --config Release --target bench
+add_custom_target(bench)
+foreach(lf "1;2" "2;3" "3;4")
+    list(GET lf 0 num)
+    list(GET lf 1 den)
+    set(name bench_${num}_${den})
+    add_executable(${name} EXCLUDE_FROM_ALL bench.c hash.c)
+    target_compile_definitions(${name} PRIVATE _CRT_SECURE_NO_WARNINGS
+        HT_LOAD_FACTOR_NUM=${num} HT_LOAD_FACTOR_DEN=${den})
+    add_dependencies(bench ${name})
+endforeach()
+
 #target_compile_options(hashtable PRIVATE -std=c++11) 

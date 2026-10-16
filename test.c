@@ -28,6 +28,56 @@ static ht_hash_t colliding_hash(const void* key)
     return 1;  // Force all keys to same hash bucket
 }
 
+static size_t count_empty(HashTable* ht)
+{
+    size_t n = 0;
+    for (size_t i = 0; i < ht->size; i++)
+        n += ht->table[i].key == NULL;
+    return n;
+}
+
+//--------------------------------------
+// Test that remove/insert churn doesn't fill the table with tombstones
+//--------------------------------------
+static void test_tombstone_churn(void)
+{
+    SUITE("Tombstone Churn");
+
+    enum { POOL = 4096, LIVE = 10 };
+    static int pool[POOL];
+
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    int ok = 1;
+    for (int i = 0; i < POOL; i++)
+    {
+        ok &= HT_OK == ht_insert(ht, &pool[i], &pool[i]);
+        if (i >= LIVE)
+            ok &= HT_OK == ht_remove(ht, &pool[i - LIVE]);
+
+        // there must always be empty slots to terminate probe chains
+        ok &= count_empty(ht) > 0;
+    }
+    TEST(ok);
+
+    // the table should stay small since the live set is small
+    TEST(ht_size(ht) == LIVE);
+    TEST(ht_capacity(ht) <= 64);
+
+    // live keys are found, removed keys are not
+    for (int i = POOL - LIVE; i < POOL; i++)
+        ok &= ht_find(ht, &pool[i]) == &pool[i];
+    for (int i = 0; i < POOL - LIVE; i++)
+        ok &= !ht_contains(ht, &pool[i]);
+    TEST(ok);
+
+    // duplicate detection still works after churn
+    TEST(HT_FAIL == ht_insert(ht, &pool[POOL - 1], &pool[0]));
+
+    ht_free(ht);
+}
+
 //--------------------------------------
 // Test probe chain integrity after deletion
 //--------------------------------------
@@ -453,6 +503,7 @@ void test_main(int argc, char *argv[])
     test_remove();
     test_delete_probe_chain();
     test_perturb_collision();
+    test_tombstone_churn();
     ht_stats(ht);
     test_destroy();
 

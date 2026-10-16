@@ -37,7 +37,7 @@ Individual tests cannot be run in isolation — `test_main()` in `test.c` runs a
 - Deleted entries are marked with a tombstone sentinel pointer (no extra struct field). Tombstones keep probe chains intact and are reused by subsequent inserts. They are cleaned up automatically during resize/rehash.
 - Empty slot sentinel: `key == NULL`. Tombstone sentinel: `key == HT_TOMBSTONE` (a unique internal address).
 - Starts with a small embedded array (`small_table`) on the struct — no heap allocation until growth.
-- Auto-grows at ~50% load factor (`2 * entries >= size`).
+- Auto-grows when live entries + tombstones reach `HT_LOAD_FACTOR_NUM/DEN` of capacity (default 1/2); rehashes at the same size instead when at least half the fill is tombstones.
 - A free-list of `HashTable` structs (`ht_free_list`) avoids repeated malloc/free.
 - NULL values are supported. Use `ht_contains` or `ht_lookup` to distinguish "not found" from "found with NULL value" (since `ht_find` returns NULL in both cases).
 
@@ -50,7 +50,7 @@ The table stores pointers only and **never frees keys or values**. Callers own t
 - **Return values**: `HT_OK` (1) for success, `HT_FAIL` (0) for failure. Pointer-returning functions return `NULL` on failure.
 - **`CHECK_THAT` macro**: Guards function preconditions. Returns 0/NULL on invalid input (asserts in `_DEBUG` builds).
 - **Hash/compare functions**: Default is pointer-identity hashing and pointer-equality comparison. For string keys, set both `ht_set_hash_func(ht, HT_HASH_STRING)` and `ht_set_compare_func(ht, compare)` — always set both together.
-- **Compile-time config macros** in `hash.h`: `HT_DEFAULT_TABLE_SIZE`, `HT_PERTURB_VALUE`, `HT_INV_LOAD_FACTOR`, `HT_ALLOC`/`HT_FREE`, `HT_TRACK_STATS`.
+- **Compile-time config macros** in `hash.h`: `HT_DEFAULT_TABLE_SIZE`, `HT_PERTURB_VALUE`, `HT_LOAD_FACTOR_NUM`/`HT_LOAD_FACTOR_DEN` (legacy `HT_INV_LOAD_FACTOR`), `HT_ALLOC`/`HT_FREE`, `HT_TRACK_STATS`.
 - **Internal config** in `hash.c`: `HT_AUTO_GROW`, `HT_LINEAR`, `HT_PERTURB`, `HT_DEBUG_STATS`.
 - Table sizes must always be powers of 2 (the mask-based indexing depends on this).
 - Call `ht_finished()` at program exit to drain the free-list.
