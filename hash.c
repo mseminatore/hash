@@ -15,6 +15,15 @@
 #define HT_LINEAR       0   // use linear probing
 #define HT_PERTURB      1   // randomize probes
 
+// warn on ht_free of a non-empty table (debug builds by default)
+#ifndef HT_WARN_FREE_NONEMPTY
+    #ifdef _DEBUG
+        #define HT_WARN_FREE_NONEMPTY 1
+    #else
+        #define HT_WARN_FREE_NONEMPTY 0
+    #endif
+#endif
+
 // tombstone marker: a unique address that can never be a valid user key
 static const char ht_tombstone_sentinel = 0;
 #define HT_TOMBSTONE ((ht_key_t)&ht_tombstone_sentinel)
@@ -119,15 +128,17 @@ static ht_hash_t default_hash_fn(ht_key_t key)
 static ht_hash_t string_hash_fn(ht_key_t key)
 {
     const unsigned char *s = (const unsigned char*)key;
-    ht_hash_t h = 3323198485ul;
+
+    // unsigned 32-bit math: wraparound is well-defined and matches the algorithm
+    uint32_t h = 3323198485u;
 
     for (; *s; ++s)
     {
         h ^= *s;
-        h *= 0x5bd1e995;
+        h *= 0x5bd1e995u;
         h ^= h >> 15;
     }
-    return h;
+    return (ht_hash_t)h;
 }
 
 //--------------------------------------
@@ -216,7 +227,12 @@ int ht_free(HashTable *ht)
 {
     CHECK_THAT(ht && ht->table);
 
-    // TODO - warn if table is not empty?
+#if HT_WARN_FREE_NONEMPTY
+    // the table never owns keys/values, so freeing a non-empty table
+    // may leak them if the caller still needed to free them
+    if (ht->entries > 0)
+        fprintf(stderr, "ht_free: table %p freed with %zu entries\n", (void*)ht, ht->entries);
+#endif
 
     // set table to default table
     // free table
@@ -574,8 +590,10 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
     // check for load factor and grow table if necessary
 #if HT_AUTO_GROW
     // tombstones occupy slots and lengthen probe chains, so count them
-    // toward load; if most of the fill is tombstones, rehash in place
-    if (HT_AT_LOAD_LIMIT(ht->entries + ht->deleted, ht->size))
+    // toward load; if most of the fill is tombstones, rehash in place.
+    // An existing key needs no new slot (replaced, or rejected for add-only),
+    // so don't resize for it; the extra lookup only happens at the limit.
+    if (HT_AT_LOAD_LIMIT(ht->entries + ht->deleted, ht->size) && !ht_contains(ht, key))
     {
         // only rehash in place when at least half the fill is tombstones,
         // so the freed space pays for the O(n) rehash

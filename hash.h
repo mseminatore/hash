@@ -15,7 +15,11 @@
 #define HT_HASH_STRING  (ht_hash_func)1
 
 // configuration
-#define HT_TRACK_STATS 1
+// NB: these change the HashTable layout, so the library and every file that
+// includes this header must be compiled with the same values
+#ifndef HT_TRACK_STATS
+    #define HT_TRACK_STATS 1
+#endif
 
 #ifndef HT_ALLOC
     #define HT_ALLOC malloc

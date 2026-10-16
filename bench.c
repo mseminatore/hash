@@ -15,6 +15,15 @@
 #define STR_(x) #x
 #define STR(x)  STR_(x)
 
+// probe counts read as 0 when stats are compiled out
+#if HT_TRACK_STATS == 1
+    #define STAT(ht, f)         ((ht)->f)
+    #define STAT_RESET(ht, f)   ((ht)->f = 0)
+#else
+    #define STAT(ht, f)         ((size_t)0)
+    #define STAT_RESET(ht, f)   ((void)0)
+#endif
+
 #define PTR_KEYS    200000
 #define CHURN_LIVE  1000
 #define CHURN_OPS   2000000
@@ -90,19 +99,19 @@ static void bench_words(char** words, size_t n)
     clock_t t = clock();
     for (size_t i = 0; i < n; i++)
         ht_insert(ht, words[i], words[i]);
-    report("words", "insert", n, elapsed_ms(t), ht->insert_collisions, ht);
+    report("words", "insert", n, elapsed_ms(t), STAT(ht, insert_collisions), ht);
 
-    ht->search_collisions = 0;
+    STAT_RESET(ht, search_collisions);
     t = clock();
     for (size_t i = 0; i < n; i++)
         ht_find(ht, words[i]);
-    report("words", "hit", n, elapsed_ms(t), ht->search_collisions, ht);
+    report("words", "hit", n, elapsed_ms(t), STAT(ht, search_collisions), ht);
 
-    ht->search_collisions = 0;
+    STAT_RESET(ht, search_collisions);
     t = clock();
     for (size_t i = 0; i < n; i++)
         ht_find(ht, misses[i]);
-    report("words", "miss", n, elapsed_ms(t), ht->search_collisions, ht);
+    report("words", "miss", n, elapsed_ms(t), STAT(ht, search_collisions), ht);
 
     ht_free(ht);
     for (size_t i = 0; i < n; i++)
@@ -124,19 +133,19 @@ static void bench_pointers(void)
     clock_t t = clock();
     for (size_t i = 0; i < PTR_KEYS; i++)
         ht_insert(ht, keys[i], keys[i]);
-    report("ptrs", "insert", PTR_KEYS, elapsed_ms(t), ht->insert_collisions, ht);
+    report("ptrs", "insert", PTR_KEYS, elapsed_ms(t), STAT(ht, insert_collisions), ht);
 
-    ht->search_collisions = 0;
+    STAT_RESET(ht, search_collisions);
     t = clock();
     for (size_t i = 0; i < PTR_KEYS; i++)
         ht_find(ht, keys[i]);
-    report("ptrs", "hit", PTR_KEYS, elapsed_ms(t), ht->search_collisions, ht);
+    report("ptrs", "hit", PTR_KEYS, elapsed_ms(t), STAT(ht, search_collisions), ht);
 
-    ht->search_collisions = 0;
+    STAT_RESET(ht, search_collisions);
     t = clock();
     for (size_t i = PTR_KEYS; i < 2 * PTR_KEYS; i++)
         ht_find(ht, keys[i]);
-    report("ptrs", "miss", PTR_KEYS, elapsed_ms(t), ht->search_collisions, ht);
+    report("ptrs", "miss", PTR_KEYS, elapsed_ms(t), STAT(ht, search_collisions), ht);
 
     ht_free(ht);
     for (size_t i = 0; i < 2 * PTR_KEYS; i++)
@@ -156,15 +165,15 @@ static void bench_churn(void)
     for (size_t i = 0; i < CHURN_LIVE; i++)
         ht_insert(ht, &pool[i], &pool[i]);
 
-    ht->insert_collisions = 0;
-    ht->search_collisions = 0;
+    STAT_RESET(ht, insert_collisions);
+    STAT_RESET(ht, search_collisions);
     clock_t t = clock();
     for (size_t i = 0; i < CHURN_OPS; i++)
     {
         ht_remove(ht, &pool[i % pool_size]);
         ht_insert(ht, &pool[(i + CHURN_LIVE) % pool_size], &pool[0]);
     }
-    report("churn", "rm+ins", CHURN_OPS, elapsed_ms(t), ht->insert_collisions + ht->search_collisions, ht);
+    report("churn", "rm+ins", CHURN_OPS, elapsed_ms(t), STAT(ht, insert_collisions) + STAT(ht, search_collisions), ht);
 
     ht_free(ht);
 }

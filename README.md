@@ -1,11 +1,11 @@
 # hash (libht)
 [![CMake](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml)
-![GitHub License](https://img.shields.io/github/license/mseminatore/hash)
+![GitHub License](https://img.shields.io/github/license/mseminatore/hash.svg?cacheSeconds=3600)
 
 This library offers an open-addressing hash table in C. My prior experiences in implementing hash tables (pre-C++ and STL) often used closed-addressing. 
 I wanted to bring my hands-on experience up to date with common practice. I looked for inspiration and guidance at many articles examples including CPython's excellent PyDict.
 
-I hope to use this library as a base for exploring the newer [elastic and funnel hashing](https://arxiv.org/pdf/2501.02305v1.pdf) methods.
+The newer [elastic and funnel hashing](https://arxiv.org/pdf/2501.02305v1.pdf) methods pay off for fixed-size, insert-only tables running close to full. This library targets general-purpose use (deletes, automatic growth, moderate load factors), so exploring those methods is better suited to a separate library.
 
 Notes
 -----

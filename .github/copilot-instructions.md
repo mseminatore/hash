@@ -51,6 +51,6 @@ The table stores pointers only and **never frees keys or values**. Callers own t
 - **`CHECK_THAT` macro**: Guards function preconditions. Returns 0/NULL on invalid input (asserts in `_DEBUG` builds).
 - **Hash/compare functions**: Default hashes the key pointer's address (bit-mixed) and compares by pointer equality. For string keys, set both `ht_set_hash_func(ht, HT_HASH_STRING)` and `ht_set_compare_func(ht, compare)` — always set both together.
 - **Compile-time config macros** in `hash.h`: `HT_DEFAULT_TABLE_SIZE`, `HT_PERTURB_VALUE`, `HT_LOAD_FACTOR_NUM`/`HT_LOAD_FACTOR_DEN` (legacy `HT_INV_LOAD_FACTOR`), `HT_ALLOC`/`HT_FREE`, `HT_TRACK_STATS`.
-- **Internal config** in `hash.c`: `HT_AUTO_GROW`, `HT_LINEAR`, `HT_PERTURB`, `HT_DEBUG_STATS`.
+- **Internal config** in `hash.c`: `HT_AUTO_GROW`, `HT_LINEAR`, `HT_PERTURB`, `HT_DEBUG_STATS`, `HT_WARN_FREE_NONEMPTY` (warns on `ht_free` of a non-empty table; on by default in `_DEBUG`).
 - Table sizes must always be powers of 2 (the mask-based indexing depends on this).
 - Call `ht_finished()` at program exit to drain the free-list.

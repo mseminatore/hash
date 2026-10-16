@@ -38,7 +38,9 @@ static size_t count_empty(HashTable* ht)
 
 //--------------------------------------
 // Test that the default pointer hash spreads aligned keys
+// (measured with probe stats, so only when they are tracked)
 //--------------------------------------
+#if HT_TRACK_STATS == 1
 static double avg_probes_for_stride(char* base, size_t stride, size_t n)
 {
     HashTable* ht = ht_create();
@@ -50,6 +52,7 @@ static double avg_probes_for_stride(char* base, size_t stride, size_t n)
         ht_find(ht, base + i * stride);
 
     double avg = (double)ht->search_collisions / (double)n;
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
     return avg;
 }
@@ -68,6 +71,40 @@ static void test_pointer_hash_spread(void)
     TEST(avg_probes_for_stride(base, 64, N) < 0.5);
 
     free(base);
+}
+#endif
+
+//--------------------------------------
+// Test that updating an existing key at the load limit doesn't grow
+//--------------------------------------
+static void test_no_grow_on_update(void)
+{
+    SUITE("No Grow On Update");
+
+    static int pool[64];
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    // fill to exactly the load limit
+    size_t n = 0;
+    while (ht->entries * HT_LOAD_FACTOR_DEN < ht->size * HT_LOAD_FACTOR_NUM)
+        ht_insert(ht, &pool[n], &pool[n]), n++;
+
+    size_t cap = ht_capacity(ht);
+
+    // replacing or re-adding an existing key needs no new slot
+    TEST(HT_OK == ht_add(ht, &pool[0], &pool[1]));
+    TEST(ht_find(ht, &pool[0]) == &pool[1]);
+    TEST(HT_FAIL == ht_insert(ht, &pool[0], &pool[0]));
+    TEST(ht_capacity(ht) == cap);
+
+    // a new key still triggers growth
+    TEST(HT_OK == ht_insert(ht, &pool[n], &pool[n]));
+    TEST(ht_capacity(ht) == 2 * cap);
+    TEST(ht_size(ht) == n + 1);
+
+    ht_clear(ht);   // keys are static or freed elsewhere
+    ht_free(ht);
 }
 
 //--------------------------------------
@@ -109,6 +146,7 @@ static void test_tombstone_churn(void)
     // duplicate detection still works after churn
     TEST(HT_FAIL == ht_insert(ht, &pool[POOL - 1], &pool[0]));
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
 }
 
@@ -160,6 +198,7 @@ static void test_delete_probe_chain(void)
     TEST(ht_find(ht, keyD) == keyD);
     TEST(ht_size(ht) == 2);
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
 }
 
@@ -191,6 +230,7 @@ static void test_contains_lookup(void)
     // lookup with NULL out_value is safe
     TEST(HT_OK == ht_lookup(ht, key, NULL));
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
 }
 
@@ -225,6 +265,7 @@ static void test_null_values(void)
     TEST(HT_FAIL == ht_contains(ht, key));
     TEST(ht_size(ht) == 0);
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
 }
 
@@ -275,6 +316,7 @@ static void test_perturb_collision(void)
 
     TEST(ht_size(ht) == (size_t)nkeys);
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     ht_free(ht);
 }
 
@@ -458,6 +500,7 @@ void test_destroy()
     TEST(ht != NULL);
     TEST(ht->table != NULL);
 
+    ht_clear(ht);   // keys are static or freed elsewhere
     TEST(HT_OK == ht_free(ht));
     ht = NULL; // Ensure ht is reset
 }
@@ -517,8 +560,15 @@ void test_big_words()
 	// debug test failure
     if (word_count != ht_size(ht))
 		printf("word count = %d, table count = %zd\n", word_count, ht_size(ht));
-	
+
     fclose(fp);
+
+    // the table doesn't own the strdup'd keys, so free them here
+    size_t index = 0;
+    ht_key_t key;
+    while (ht_next(ht, &index, &key, NULL))
+        free((void*)key);
+    ht_clear(ht);
 }
 
 //--------------------------------------
@@ -538,7 +588,10 @@ void test_main(int argc, char *argv[])
     test_delete_probe_chain();
     test_perturb_collision();
     test_tombstone_churn();
+    test_no_grow_on_update();
+#if HT_TRACK_STATS == 1
     test_pointer_hash_spread();
+#endif
     ht_stats(ht);
     test_destroy();
 
