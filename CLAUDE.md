@@ -18,7 +18,7 @@ build/Debug/ht_test      # Windows, direct
 ./build/ht_test          # Unix, direct
 ```
 
-Load-factor benchmarks (not built by default, not run by ctest): `cmake --build build --config Release --target bench`, then run `build/Release/bench_1_2`, `bench_2_3`, `bench_3_4` from the repo root.
+Load-factor benchmarks (not built by default, not run by ctest): `cmake --build build --config Release --target bench`, then run `build/Release/bench_1_2 [words_file] [reps]` (also `bench_2_3`, `bench_3_4`) from the repo root. Each scenario runs `reps` times (default 5) on a fresh table and reports best and median ns/op; compare best times, and treat a large best/median gap as a noisy run.
 
 A Unix `Makefile` also exists (`make && make test`) and builds `libht.a` + `ht_test`.
 
