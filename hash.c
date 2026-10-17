@@ -37,6 +37,12 @@ static const char ht_tombstone_sentinel = 0;
 // true when 'used' slots reach the load factor threshold of 'size'
 #define HT_AT_LOAD_LIMIT(used, size)    ((used) * HT_LOAD_FACTOR_DEN >= (size) * HT_LOAD_FACTOR_NUM)
 
+// probe loop bound is size + HT_PROBE_EXTRA. While perturb is nonzero the
+// sequence can revisit slots; it reaches 0 after this many shifts, and from
+// then on the next 'size' steps visit every slot. Bounding at just 'size'
+// let inserts into small tables fail with empty slots still available.
+#define HT_PROBE_EXTRA  ((sizeof(size_t) * 8 + HT_PERTURB_VALUE - 1) / HT_PERTURB_VALUE)
+
 static HashTable* ht_resize(HashTable* ht, size_t new_size);
 
 #ifdef _DEBUG
@@ -372,7 +378,7 @@ ht_value_t ht_find(HashTable *ht, ht_key_t key)
     size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (size_t i = 0; i < ht->size; i++)
+    for (size_t i = 0; i < ht->size + HT_PROBE_EXTRA; i++)
     {
         if (HASH_EMPTY(hte))
             return NULL;
@@ -417,7 +423,7 @@ int ht_contains(HashTable *ht, ht_key_t key)
     size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (size_t i = 0; i < ht->size; i++)
+    for (size_t i = 0; i < ht->size + HT_PROBE_EXTRA; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;
@@ -461,7 +467,7 @@ int ht_lookup(HashTable *ht, ht_key_t key, ht_value_t *out_value)
     size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (size_t i = 0; i < ht->size; i++)
+    for (size_t i = 0; i < ht->size + HT_PROBE_EXTRA; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;
@@ -509,7 +515,7 @@ static int ht_insert_nocheck(HashTable *ht, HashTable_Entry* table, ht_hash_t ha
     // track first tombstone for reuse
     HashTable_Entry* first_tombstone = NULL;
 
-    for (size_t i = 0; i < size; i++)
+    for (size_t i = 0; i < size + HT_PROBE_EXTRA; i++)
     {
         if (HASH_EMPTY(hte))
         {
@@ -651,7 +657,7 @@ int ht_remove(HashTable* ht, ht_key_t key)
     size_t bin = (size_t)hash & ht->mask;
     HashTable_Entry* hte = &ht->table[bin];
 
-    for (size_t i = 0; i < ht->size; i++)
+    for (size_t i = 0; i < ht->size + HT_PROBE_EXTRA; i++)
     {
         if (HASH_EMPTY(hte))
             return HT_FAIL;

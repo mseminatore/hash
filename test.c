@@ -108,6 +108,58 @@ static void test_no_grow_on_update(void)
 }
 
 //--------------------------------------
+// Test that inserts into a small table never fail while slots are free.
+// The probe sequence can revisit slots before perturb reaches zero, so a
+// loop bounded at 'size' used to fail roughly 1 in 2,450 fills.
+//--------------------------------------
+static uint64_t probe_seed;
+
+static uint64_t splitmix64(uint64_t x)
+{
+    x += 0x9E3779B97F4A7C15ull;
+    x = (x ^ (x >> 30)) * 0xBF58476D1CE4E5B9ull;
+    x = (x ^ (x >> 27)) * 0x94D049BB133111EBull;
+    return x ^ (x >> 31);
+}
+
+static ht_hash_t seeded_hash(ht_key_t key)
+{
+    return (ht_hash_t)splitmix64((uintptr_t)key ^ probe_seed);
+}
+
+static void test_small_table_insert(void)
+{
+    SUITE("Small Table Insert");
+
+    static char pool[64];
+    long fails = 0;
+
+    for (long trial = 0; trial < 100000; trial++)
+    {
+        probe_seed = splitmix64((uint64_t)trial);
+
+        HashTable* ht = ht_create();
+        ht_set_hash_func(ht, seeded_hash);
+
+        // fill the default-size table up to its grow limit
+        for (int i = 0; ht->size == HT_DEFAULT_TABLE_SIZE
+            && ht->entries * HT_LOAD_FACTOR_DEN < ht->size * HT_LOAD_FACTOR_NUM; i++)
+        {
+            if (HT_OK != ht_insert(ht, &pool[i], &pool[i]))
+            {
+                fails++;
+                break;
+            }
+        }
+
+        ht_clear(ht);   // keys are static
+        ht_free(ht);
+    }
+
+    TEST(fails == 0);
+}
+
+//--------------------------------------
 // Test that resizes that fit reuse the embedded small_table
 //--------------------------------------
 static void test_small_table_reuse(void)
@@ -630,6 +682,7 @@ void test_main(int argc, char *argv[])
     test_tombstone_churn();
     test_no_grow_on_update();
     test_small_table_reuse();
+    test_small_table_insert();
 #if HT_TRACK_STATS == 1
     test_pointer_hash_spread();
 #endif
