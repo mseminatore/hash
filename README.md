@@ -1,6 +1,6 @@
 # hash (libht)
 [![CMake](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml/badge.svg)](https://github.com/mseminatore/hash/actions/workflows/cmake-single-platform.yml)
-![GitHub License](https://img.shields.io/github/license/mseminatore/hash.svg?cacheSeconds=3600)
+![GitHub License](https://img.shields.io/github/license/mseminatore/hash)
 
 This library offers an open-addressing hash table in C. My prior experiences in implementing hash tables (pre-C++ and STL) often used closed-addressing. 
 I wanted to bring my hands-on experience up to date with common practice. I looked for inspiration and guidance at many articles examples including CPython's excellent PyDict.
