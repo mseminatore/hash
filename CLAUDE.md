@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Test
 
-C project; CMake is the primary build system (and what CI uses). The `testy` test framework is a git submodule — run `git submodule update --init` if `testy/` is empty.
+C project; CMake is the primary build system (CI runs Linux + Windows × Debug + Release, plus a Linux build with `HT_TRACK_STATS=0`, and also builds the `bench` target). The `testy` test framework is a git submodule — run `git submodule update --init` if `testy/` is empty.
 
 ```sh
 # Configure and build

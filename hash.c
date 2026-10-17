@@ -705,15 +705,30 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
 {
     CHECK_THAT(ht && ht->table);
 
-    // alloc new table
+    // tables that fit go back in the embedded small_table instead of the heap.
+    // The source may be small_table itself (same-size rehash), so rehash into
+    // a stack buffer first and copy it in afterwards.
+    int to_small = new_size <= HT_DEFAULT_TABLE_SIZE;
+    HashTable_Entry small_buf[HT_DEFAULT_TABLE_SIZE];
+
     size_t new_table_size = sizeof(HashTable_Entry) * new_size;
-    HashTable_Entry* new_table = HT_ALLOC(new_table_size);
-    if (!new_table)
+    HashTable_Entry* new_table;
+
+    if (to_small)
     {
-        return NULL;
+        new_table = small_buf;
+    }
+    else
+    {
+        new_table = HT_ALLOC(new_table_size);
+        if (!new_table)
+        {
+            return NULL;
+        }
+
+        HT_ALLOC_INC;
     }
 
-    HT_ALLOC_INC;
     memset(new_table, 0, new_table_size);
 
     // re-insert existing items into new table
@@ -727,8 +742,11 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
         {
             if (HT_FAIL == ht_insert_nocheck(ht, new_table, hte->hash, hte->key, hte->value, new_size, HT_ADD_ONLY))
             {
-                HT_FREE(new_table);
-                HT_FREE_INC;
+                if (!to_small)
+                {
+                    HT_FREE(new_table);
+                    HT_FREE_INC;
+                }
                 return NULL;
             }
         }
@@ -739,6 +757,12 @@ static HashTable* ht_resize(HashTable* ht, size_t new_size)
     {
         HT_FREE(ht->table);
         HT_FREE_INC;
+    }
+
+    if (to_small)
+    {
+        memcpy(ht->small_table, small_buf, new_table_size);
+        new_table = ht->small_table;
     }
 
     // update hash table state

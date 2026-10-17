@@ -7,6 +7,12 @@ project(hashtable VERSION 1.0 LANGUAGES C)
 enable_testing()
 add_test(NAME ht_test COMMAND ht_test WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 
+# MSVC defines _DEBUG for Debug builds; do the same elsewhere so CHECK_THAT
+# asserts and HT_WARN_FREE_NONEMPTY are active in every Debug build
+if(NOT MSVC)
+    add_compile_definitions($<$<CONFIG:Debug>:_DEBUG>)
+endif()
+
 # add the includes
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/testy)

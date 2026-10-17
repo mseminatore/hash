@@ -108,6 +108,46 @@ static void test_no_grow_on_update(void)
 }
 
 //--------------------------------------
+// Test that resizes that fit reuse the embedded small_table
+//--------------------------------------
+static void test_small_table_reuse(void)
+{
+    SUITE("Small Table Reuse");
+
+    static int pool[64];
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+    TEST(ht->table == ht->small_table);
+
+    // fill to the load limit, then remove everything, leaving only tombstones
+    size_t n = 0;
+    while (ht->entries * HT_LOAD_FACTOR_DEN < ht->size * HT_LOAD_FACTOR_NUM)
+        ht_insert(ht, &pool[n], &pool[n]), n++;
+    for (size_t i = 0; i < n; i++)
+        ht_remove(ht, &pool[i]);
+    TEST(ht->deleted == n);
+
+    // the next insert rehashes in place and should stay in small_table
+    TEST(HT_OK == ht_insert(ht, &pool[n], &pool[n]));
+    TEST(ht->table == ht->small_table);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
+    TEST(ht->deleted == 0);
+    TEST(ht_find(ht, &pool[n]) == &pool[n]);
+
+    // grow onto the heap, then shrink back into small_table
+    TEST(ht_grow(ht) != NULL);
+    TEST(ht->table != ht->small_table);
+    TEST(ht_shrink(ht) != NULL);
+    TEST(ht->table == ht->small_table);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
+    TEST(ht_find(ht, &pool[n]) == &pool[n]);
+    TEST(ht_size(ht) == 1);
+
+    ht_clear(ht);   // keys are static or freed elsewhere
+    ht_free(ht);
+}
+
+//--------------------------------------
 // Test that remove/insert churn doesn't fill the table with tombstones
 //--------------------------------------
 static void test_tombstone_churn(void)
@@ -589,6 +629,7 @@ void test_main(int argc, char *argv[])
     test_perturb_collision();
     test_tombstone_churn();
     test_no_grow_on_update();
+    test_small_table_reuse();
 #if HT_TRACK_STATS == 1
     test_pointer_hash_spread();
 #endif
