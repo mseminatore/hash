@@ -200,6 +200,82 @@ static void test_small_table_reuse(void)
 }
 
 //--------------------------------------
+// Test that a table emptied by mass removals shrinks, both on the rehash
+// forced by later churn and via an explicit ht_shrink
+//--------------------------------------
+static void test_shrink_after_removal(void)
+{
+    SUITE("Shrink After Removal");
+
+    enum { BIG = 4096, LIVE = 10, CHURN = 4096 };
+    static int pool[BIG + CHURN];
+
+    HashTable* ht = ht_create();
+    TEST(ht != NULL);
+
+    int ok = 1;
+    for (int i = 0; i < BIG; i++)
+        ok &= HT_OK == ht_insert(ht, &pool[i], &pool[i]);
+    TEST(ok);
+    size_t big_cap = ht_capacity(ht);
+    TEST(big_cap >= BIG);
+
+    // removing never resizes, so iteration-with-removal stays safe
+    for (int i = LIVE; i < BIG; i++)
+        ok &= HT_OK == ht_remove(ht, &pool[i]);
+    TEST(ok);
+    TEST(ht_capacity(ht) == big_cap);
+
+    // churn until tombstones force a rehash, which should right-size the table
+    for (int i = 0; i < CHURN; i++)
+    {
+        ok &= HT_OK == ht_insert(ht, &pool[BIG + i], &pool[BIG + i]);
+        ok &= HT_OK == ht_remove(ht, &pool[BIG + i]);
+    }
+    TEST(ok);
+    TEST(ht_capacity(ht) < big_cap);
+    TEST(ht_capacity(ht) <= 64);
+
+    // the original live keys survive, nothing else does
+    TEST(ht_size(ht) == LIVE);
+    for (int i = 0; i < LIVE; i++)
+        ok &= ht_find(ht, &pool[i]) == &pool[i];
+    for (int i = LIVE; i < BIG + CHURN; i++)
+        ok &= !ht_contains(ht, &pool[i]);
+    TEST(ok);
+
+    // explicit shrink goes to the minimum in one call and back into small_table
+    for (int i = 1; i < LIVE; i++)
+        ok &= HT_OK == ht_remove(ht, &pool[i]);
+    TEST(ok);
+    TEST(ht_shrink(ht) == ht);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
+    TEST(ht->table == ht->small_table);
+    TEST(ht->deleted == 0);
+    TEST(ht_size(ht) == 1);
+    TEST(ht_find(ht, &pool[0]) == &pool[0]);
+
+    // shrinking a big table straight to the minimum, from the heap
+    for (int i = 1; i < BIG; i++)
+        ok &= HT_OK == ht_insert(ht, &pool[i], &pool[i]);
+    for (int i = 1; i < BIG; i++)
+        ok &= HT_OK == ht_remove(ht, &pool[i]);
+    TEST(ok);
+    TEST(ht_capacity(ht) >= BIG);
+    TEST(ht_shrink(ht) == ht);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
+    TEST(ht->table == ht->small_table);
+    TEST(ht_find(ht, &pool[0]) == &pool[0]);
+
+    // nothing left to do: no-op, still succeeds
+    TEST(ht_shrink(ht) == ht);
+    TEST(ht_capacity(ht) == HT_DEFAULT_TABLE_SIZE);
+
+    ht_clear(ht);   // keys are static
+    ht_free(ht);
+}
+
+//--------------------------------------
 // Test that remove/insert churn doesn't fill the table with tombstones
 //--------------------------------------
 static void test_tombstone_churn(void)
@@ -525,10 +601,16 @@ void test_insert()
 
     ht_stats(ht);
 
-    TEST(NULL == ht_shrink(ht));
+    // already minimal: shrink is a no-op that still succeeds
+    size_t cap = ht_capacity(ht);
+    TEST(ht_shrink(ht) == ht);
+    TEST(ht_capacity(ht) == cap);
+
+    // shrink undoes both grows in one call
     TEST(ht_grow(ht) != NULL);
     TEST(ht_grow(ht) != NULL);
-    TEST(NULL != ht_shrink(ht));
+    TEST(ht_shrink(ht) == ht);
+    TEST(ht_capacity(ht) == cap);
     ht_stats(ht);
 }
 
@@ -683,6 +765,7 @@ void test_main(int argc, char *argv[])
     test_no_grow_on_update();
     test_small_table_reuse();
     test_small_table_insert();
+    test_shrink_after_removal();
 #if HT_TRACK_STATS == 1
     test_pointer_hash_spread();
 #endif

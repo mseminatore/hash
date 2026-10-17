@@ -37,7 +37,7 @@ Individual tests cannot be run in isolation — `test_main()` in `test.c` runs a
 - Deleted entries are marked with a tombstone sentinel pointer (no extra struct field). Tombstones keep probe chains intact and are reused by subsequent inserts. They are cleaned up automatically during resize/rehash.
 - Empty slot sentinel: `key == NULL`. Tombstone sentinel: `key == HT_TOMBSTONE` (a unique internal address).
 - Starts with a small embedded array (`small_table`) on the struct — no heap allocation until growth.
-- Auto-grows when live entries + tombstones reach `HT_LOAD_FACTOR_NUM/DEN` of capacity (default 1/2); rehashes at the same size instead when at least half the fill is tombstones.
+- Auto-grows when live entries + tombstones reach `HT_LOAD_FACTOR_NUM/DEN` of capacity (default 1/2); when at least half the fill is tombstones it rehashes instead, sized to the live entries (never larger than now), so tables emptied by mass removals shrink then. Removes never resize. `ht_shrink` shrinks to fit in one call and returns NULL only on allocation failure.
 - A free-list of `HashTable` structs (`ht_free_list`) avoids repeated malloc/free.
 - NULL values are supported. Use `ht_contains` or `ht_lookup` to distinguish "not found" from "found with NULL value" (since `ht_find` returns NULL in both cases).
 

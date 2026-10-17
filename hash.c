@@ -45,6 +45,20 @@ static const char ht_tombstone_sentinel = 0;
 
 static HashTable* ht_resize(HashTable* ht, size_t new_size);
 
+//--------------------------------------
+// smallest valid table size (power of 2, at least HT_DEFAULT_TABLE_SIZE)
+// that holds 'used' slots under the load limit
+//--------------------------------------
+static size_t ht_fit_size(size_t used)
+{
+    size_t size = HT_DEFAULT_TABLE_SIZE;
+
+    while (HT_AT_LOAD_LIMIT(used, size))
+        size <<= 1;
+
+    return size;
+}
+
 #ifdef _DEBUG
 #   define CHECK_THAT(cond)            assert(cond); if (!(cond)) return 0;
 #else
@@ -601,9 +615,15 @@ static int ht_add_or_update(HashTable* ht, ht_key_t key, ht_value_t value, int r
     // so don't resize for it; the extra lookup only happens at the limit.
     if (HT_AT_LOAD_LIMIT(ht->entries + ht->deleted, ht->size) && !ht_contains(ht, key))
     {
-        // only rehash in place when at least half the fill is tombstones,
-        // so the freed space pays for the O(n) rehash
-        size_t new_size = HT_AT_LOAD_LIMIT(2 * (ht->entries + 1), ht->size) ? ht->size << 1 : ht->size;
+        // only rehash (rather than double) when at least half the fill is
+        // tombstones, so the freed space pays for the O(n) rehash. The rehash
+        // is sized to the live entries with the same headroom (live at most
+        // half the limit), so a table emptied by mass removals shrinks here.
+        // That size is never above the current one, since the doubling test
+        // just failed for it.
+        size_t new_size = HT_AT_LOAD_LIMIT(2 * (ht->entries + 1), ht->size)
+            ? ht->size << 1
+            : ht_fit_size(2 * (ht->entries + 1));
 
         if (!ht_resize(ht, new_size))
         {
@@ -799,18 +819,24 @@ HashTable *ht_grow(HashTable *ht)
 }
 
 //--------------------------------------
-// try to shrink the table
+// shrink the table to fit its live entries, dropping tombstones.
+// Returns ht (unchanged if already minimal), NULL only on failure.
+// Moves entries, so don't call it while iterating with ht_next.
 //--------------------------------------
 HashTable* ht_shrink(HashTable* ht)
 {
     CHECK_THAT(ht && ht->table);
 
-	// decrease (half) table size
-	size_t new_size = ht->size >> 1;
+    size_t new_size = ht_fit_size(ht->entries);
 
-    // make sure smaller size is large enough
-    if (HT_AT_LOAD_LIMIT(ht->entries, new_size))
-        return NULL;
+    if (new_size >= ht->size)
+    {
+        // can't get smaller; still rehash in place to clear tombstones
+        if (!ht->deleted)
+            return ht;
+
+        new_size = ht->size;
+    }
 
     return ht_resize(ht, new_size);
 }

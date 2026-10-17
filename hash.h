@@ -108,7 +108,7 @@ int ht_add(HashTable* ht, ht_key_t key, ht_value_t value);
 size_t ht_size(HashTable *ht);
 size_t ht_capacity(HashTable *ht);
 HashTable *ht_grow(HashTable *ht);
-HashTable *ht_shrink(HashTable *ht);
+HashTable *ht_shrink(HashTable *ht); /* Shrink to fit live entries; returns ht, NULL only on alloc failure. Not during ht_next iteration */
 int ht_next(HashTable* ht, size_t *ipos, ht_key_t*pkey, ht_value_t *pvalue);
 void ht_finished(void);
 int ht_remove(HashTable* ht, ht_key_t key);
