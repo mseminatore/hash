@@ -10,6 +10,7 @@ The newer [elastic and funnel hashing](https://arxiv.org/pdf/2501.02305v1.pdf) m
 Notes
 -----
 - The hash table API uses opaque key and value pointers: `ht_key_t` and `ht_value_t` are `const void *`.
+- Hash functions return `ht_hash_t`, which is `uintptr_t`, so they can multiply and shift freely: unsigned wraparound is well-defined. (It was `intptr_t` in older versions, where an overflowing multiply in a hash function was undefined behavior. Declare custom hash functions as returning `ht_hash_t`, not a concrete integer type.)
 - Hash and compare function typedefs accept `ht_key_t` (i.e. `const void *`). This makes the API neutral to key representation — keys can be pointer identities or pointers to NUL-terminated C strings depending on the hash/compare functions you set.
 	- The built-in `HT_HASH_STRING` string hasher expects the `ht_key_t` to point to a NUL-terminated C string. The default string hasher reads the key as `const unsigned char *`.
 	- The default hash function hashes the key pointer's address, mixing its bits so aligned or evenly spaced pointers spread well (only useful when keys are pointers intended to be hashed by address).

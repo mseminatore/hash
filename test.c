@@ -642,14 +642,16 @@ static void test_perturb_collision(void)
 static ht_hash_t hash(const void *key)
 {
     const unsigned char *s = (const unsigned char*)key;
-    ht_hash_t h = 3323198485ul;
+
+    // unsigned math: ht_hash_t is signed, so multiplying in it overflows (UB)
+    uint32_t h = 3323198485u;
     for (; *s; ++s)
     {
         h ^= *s;
-        h *= 0x5bd1e995;
+        h *= 0x5bd1e995u;
         h ^= h >> 15;
     }
-    return h;
+    return (ht_hash_t)h;
 }
 
 //--------------------------------------

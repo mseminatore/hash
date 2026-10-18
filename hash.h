@@ -56,7 +56,9 @@
 // declared as `const void *` to indicate the table does not modify them.
 // When using the built-in string hasher (`HT_HASH_STRING`) the key must be
 // a pointer to a NULL-terminated C string (i.e. `const char *`).
-typedef intptr_t ht_hash_t;
+// ht_hash_t is unsigned so hash functions can multiply and shift freely:
+// unsigned wraparound is well-defined, signed overflow is UB.
+typedef uintptr_t ht_hash_t;
 typedef const void* ht_key_t;
 typedef const void* ht_value_t;
 
