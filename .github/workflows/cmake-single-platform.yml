@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: ${{ matrix.os }} ${{ matrix.build_type }}${{ matrix.stats == 'off' && ' (stats off)' || '' }}
+    name: ${{ matrix.os }} ${{ matrix.build_type }}${{ matrix.variant != 'default' && format(' ({0})', matrix.variant) || '' }}
     runs-on: ${{ matrix.os }}
 
     strategy:
@@ -18,15 +18,18 @@ jobs:
       matrix:
         os: [ ubuntu-latest, windows-latest ]
         build_type: [ Debug, Release ]
-        stats: [ 'on' ]
+        variant: [ default ]
         include:
-          # stats compiled out, to keep that configuration building.
-          # 'stats' must differ from the base matrix, or this entry would
-          # just add c_flags to the existing ubuntu/Release job
+          # extra configurations. 'variant' must differ from the base matrix,
+          # or an entry would just add cmake_args to an existing job
           - os: ubuntu-latest
             build_type: Release
-            stats: 'off'
-            c_flags: -DHT_TRACK_STATS=0
+            variant: stats off      # keep the stats-compiled-out build working
+            cmake_args: -DCMAKE_C_FLAGS=-DHT_TRACK_STATS=0
+          - os: ubuntu-latest
+            build_type: Debug
+            variant: sanitizers     # ASan + UBSan, any report fails the job
+            cmake_args: -DHT_SANITIZE=ON
 
     steps:
     - uses: actions/checkout@v4
@@ -34,9 +37,9 @@ jobs:
         submodules: recursive
 
     - name: Configure CMake
-      # CMAKE_BUILD_TYPE is used by single-config generators (make/ninja); --config by multi-config (Visual Studio)
-      # only override CMAKE_C_FLAGS when set, so compiler default flags are kept
-      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ${{ matrix.c_flags && format('-DCMAKE_C_FLAGS={0}', matrix.c_flags) || '' }}
+      # CMAKE_BUILD_TYPE is used by single-config generators (make/ninja); --config by multi-config (Visual Studio).
+      # cmake_args is empty for the base matrix, so compiler default flags are kept
+      run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} ${{ matrix.cmake_args }}
 
     - name: Build
       run: cmake --build build --config ${{ matrix.build_type }}
@@ -45,4 +48,7 @@ jobs:
       run: cmake --build build --config ${{ matrix.build_type }} --target bench
 
     - name: Test
+      env:
+        ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+        UBSAN_OPTIONS: print_stacktrace=1
       run: ctest --test-dir build -C ${{ matrix.build_type }} --output-on-failure

@@ -200,6 +200,154 @@ static void test_small_table_reuse(void)
 }
 
 //--------------------------------------
+// Randomized test against a reference model: a long seeded sequence of
+// mixed operations, every result checked against a plain array
+//--------------------------------------
+enum { MODEL_KEYS = 256, MODEL_OPS = 100000 };
+static int model_pool[MODEL_KEYS];
+
+// few distinct hashes, so probe chains are long and full of tombstones
+static ht_hash_t weak_hash(ht_key_t key)
+{
+    return (ht_hash_t)(((const int*)key - model_pool) & 15);
+}
+
+// ht_lookup and ht_next must agree with the model for every key
+static int model_verify(HashTable* t, const int* present, ht_value_t* values, size_t count)
+{
+    int ok = ht_size(t) == count;
+
+    for (int k = 0; k < MODEL_KEYS; k++)
+    {
+        ht_value_t v = (ht_value_t)&model_pool[0];
+        int found = ht_lookup(t, &model_pool[k], &v) == HT_OK;
+        ok &= found == present[k];
+        ok &= !found || v == values[k];
+    }
+
+    size_t pos = 0, seen = 0;
+    ht_key_t key;
+    ht_value_t v;
+    while (ht_next(t, &pos, &key, &v))
+    {
+        int k = (int)((const int*)key - model_pool);
+        ok &= k >= 0 && k < MODEL_KEYS && present[k] && v == values[k];
+        seen++;
+    }
+    ok &= seen == count;
+
+    // the tombstone counter drives resizing, so it must match the slots:
+    // every slot that is neither empty nor live is a tombstone
+    ok &= t->size - count_empty(t) - count == t->deleted;
+
+    return ok;
+}
+
+static void test_random_model_pass(ht_hash_func hash_fn, uint64_t seed)
+{
+    static int vals[3];
+    int present[MODEL_KEYS] = { 0 };
+    ht_value_t values[MODEL_KEYS] = { 0 };
+    size_t count = 0;
+    int ok = 1;
+
+    HashTable* t = ht_create();
+    TEST(t != NULL);
+    ht_set_hash_func(t, hash_fn);
+
+    uint64_t r = seed;
+    for (int op = 0; op < MODEL_OPS && ok; op++)
+    {
+        r = splitmix64(r);
+        int k = (int)(r % MODEL_KEYS);
+        ht_key_t key = &model_pool[k];
+        int choice = (int)((r >> 32) % 1000);
+
+        // NULL is a legal value, so mix it in
+        ht_value_t v = ((r >> 48) & 3) ? (ht_value_t)&vals[(r >> 50) % 3] : NULL;
+
+        if (choice < 350)           // insert: fails if present
+        {
+            ok &= ht_insert(t, key, v) == (present[k] ? HT_FAIL : HT_OK);
+            if (!present[k])
+                present[k] = 1, values[k] = v, count++;
+        }
+        else if (choice < 500)      // add: insert or replace
+        {
+            ok &= ht_add(t, key, v) == HT_OK;
+            if (!present[k])
+                count++;
+            present[k] = 1, values[k] = v;
+        }
+        else if (choice < 850)      // remove: fails if absent
+        {
+            ok &= ht_remove(t, key) == (present[k] ? HT_OK : HT_FAIL);
+            if (present[k])
+                present[k] = 0, count--;
+        }
+        else if (choice < 990)      // find / contains
+        {
+            ok &= ht_contains(t, key) == (present[k] ? HT_OK : HT_FAIL);
+            ok &= ht_find(t, key) == (present[k] ? values[k] : NULL);
+        }
+        else if (choice < 995)      // shrink to fit
+        {
+            ok &= ht_shrink(t) == t;
+        }
+        else if (choice < 998)      // grow, capped so runs of grows stay cheap
+        {
+            if (ht_capacity(t) < 4096)
+                ok &= ht_grow(t) == t;
+        }
+        else if (choice < 999)      // remove during iteration (documented safe)
+        {
+            size_t pos = 0;
+            ht_key_t ikey;
+            int n = 0;
+            while (ht_next(t, &pos, &ikey, NULL))
+            {
+                int ik = (int)((const int*)ikey - model_pool);
+                if (n++ & 1)
+                {
+                    ok &= ht_remove(t, ikey) == HT_OK;
+                    present[ik] = 0, count--;
+                }
+            }
+        }
+        else                        // clear
+        {
+            ht_clear(t);
+            memset(present, 0, sizeof(present));
+            count = 0;
+        }
+
+        ok &= ht_size(t) == count;
+
+        if (op % 1000 == 0)
+            ok &= model_verify(t, present, values, count);
+    }
+
+    ok &= model_verify(t, present, values, count);
+    TEST(ok);
+
+    // capacity tracks the live set, not the history
+    ht_shrink(t);
+    TEST(ht_capacity(t) <= 2 * MODEL_KEYS * HT_LOAD_FACTOR_DEN / HT_LOAD_FACTOR_NUM);
+
+    ht_clear(t);    // keys are static
+    ht_free(t);
+}
+
+static void test_random_model(void)
+{
+    SUITE("Random Model");
+
+    test_random_model_pass(HT_HASH_NULL, 1);
+    test_random_model_pass(weak_hash, 2);
+    test_random_model_pass(seeded_hash, 3);
+}
+
+//--------------------------------------
 // Test that a table emptied by mass removals shrinks, both on the rehash
 // forced by later churn and via an explicit ht_shrink
 //--------------------------------------
@@ -766,6 +914,7 @@ void test_main(int argc, char *argv[])
     test_small_table_reuse();
     test_small_table_insert();
     test_shrink_after_removal();
+    test_random_model();
 #if HT_TRACK_STATS == 1
     test_pointer_hash_spread();
 #endif

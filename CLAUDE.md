@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Test
 
-C project; CMake is the primary build system (CI runs Linux + Windows × Debug + Release, plus a Linux build with `HT_TRACK_STATS=0`, and also builds the `bench` target). The `testy` test framework is a git submodule — run `git submodule update --init` if `testy/` is empty.
+C project built with CMake (CI runs Linux + Windows × Debug + Release, plus a Linux Release build with `HT_TRACK_STATS=0` and a Linux Debug sanitizer build, and also builds the `bench` target). The `testy` test framework is a git submodule — run `git submodule update --init` if `testy/` is empty.
 
 ```sh
 # Configure and build
@@ -20,7 +20,9 @@ build/Debug/ht_test      # Windows, direct
 
 Load-factor benchmarks (not built by default, not run by ctest): `cmake --build build --config Release --target bench`, then run `build/Release/bench_1_2 [words_file] [reps]` (also `bench_2_3`, `bench_3_4`) from the repo root. Each scenario runs `reps` times (default 5) on a fresh table and reports best and median ns/op; compare best times, and treat a large best/median gap as a noisy run.
 
-A Unix `Makefile` also exists (`make && make test`) and builds `libht.a` + `ht_test`.
+CMake is the only build system. `-DHT_SANITIZE=ON` (GCC/Clang only) builds with ASan + UBSan; CI runs this on Linux Debug, and any report fails the job. There's no local Linux toolchain on the Windows dev box, so sanitizer issues show up in CI first.
+
+`test_random_model` runs long seeded random operation sequences (default, weak and seeded hashes) checked against a plain-array model. When changing probing, tombstones or resizing, it's the broadest check.
 
 Individual tests cannot be run in isolation: `test_main()` in `test.c` runs every suite sequentially (some share global state) and calls `ht_finished()` at the end. To focus on one suite, temporarily comment out the others in `test_main()`. Tests use testy's `MODULE`, `SUITE`, `TEST`, `TESTEX` macros. `test_big_words` loads `words_alpha.txt`, probing several relative paths so it works from the repo root or a build subdirectory.
 

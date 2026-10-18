@@ -13,6 +13,17 @@ if(NOT MSVC)
     add_compile_definitions($<$<CONFIG:Debug>:_DEBUG>)
 endif()
 
+# AddressSanitizer + UndefinedBehaviorSanitizer (GCC/Clang), used by CI.
+# UB is made fatal so ctest fails on it rather than just printing a report.
+option(HT_SANITIZE "Build with ASan and UBSan" OFF)
+if(HT_SANITIZE)
+    if(MSVC)
+        message(FATAL_ERROR "HT_SANITIZE needs GCC or Clang; for MSVC ASan add /fsanitize=address to a non-Debug build")
+    endif()
+    add_compile_options(-fsanitize=address,undefined -fno-sanitize-recover=undefined -fno-omit-frame-pointer)
+    add_link_options(-fsanitize=address,undefined)
+endif()
+
 # add the includes
 include_directories(${PROJECT_SOURCE_DIR})
 include_directories(${PROJECT_SOURCE_DIR}/testy)

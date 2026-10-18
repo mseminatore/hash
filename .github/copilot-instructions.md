@@ -21,7 +21,7 @@ build/Debug/ht_test          # Windows
 ./build/ht_test              # Unix
 ```
 
-There is also a Unix `Makefile` (`make && make test`), but CMake is the primary build system and what CI uses.
+CMake is the only build system. `-DHT_SANITIZE=ON` (GCC/Clang) builds with ASan + UBSan, as the CI sanitizer job does.
 
 Individual tests cannot be run in isolation — `test_main()` in `test.c` runs all suites sequentially and some depend on shared state.
 
